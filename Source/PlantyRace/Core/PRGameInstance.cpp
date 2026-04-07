@@ -1,16 +1,16 @@
 ﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
 
 
-#include "PlantyRaceGameInstance.h"
+#include "PRGameInstance.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
 
-UPlantyRaceGameInstance::UPlantyRaceGameInstance()
+UPRGameInstance::UPRGameInstance()
 {
 	GameMapName = TEXT("TestLevel");
 }
 
-void UPlantyRaceGameInstance::CreateSession()
+void UPRGameInstance::CreateSession()
 {
 	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
 	if (!Subsystem) return;
@@ -24,7 +24,7 @@ void UPlantyRaceGameInstance::CreateSession()
 	}
 
 	SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(
-		this, &UPlantyRaceGameInstance::OnCreateSessionComplete);
+		this, &UPRGameInstance::OnCreateSessionComplete);
 
 	// 방설정
 	FOnlineSessionSettings SessionSettings;
@@ -36,7 +36,7 @@ void UPlantyRaceGameInstance::CreateSession()
 	SessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
 }
 
-void UPlantyRaceGameInstance::OnCreateSessionComplete(
+void UPRGameInstance::OnCreateSessionComplete(
 	FName SessionName, bool bWasSuccessful)
 {
 	if (bWasSuccessful)
@@ -45,7 +45,7 @@ void UPlantyRaceGameInstance::OnCreateSessionComplete(
 	}
 }
 
-void UPlantyRaceGameInstance::FindSession()
+void UPRGameInstance::FindSession()
 {
 	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
 	if (!Subsystem) return;
@@ -54,7 +54,7 @@ void UPlantyRaceGameInstance::FindSession()
 	if (!SessionInterface.IsValid()) return;
 
 	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(
-		this, &UPlantyRaceGameInstance::OnFindSessionsComplete);
+		this, &UPRGameInstance::OnFindSessionsComplete);
 
 	//검색설정
 	SessionSearch = MakeShareable(new FOnlineSessionSearch());
@@ -64,7 +64,7 @@ void UPlantyRaceGameInstance::FindSession()
 	SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 }
 
-void UPlantyRaceGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
+void UPRGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 {
 	if (!bWasSuccessful) return;
 	if (!SessionSearch.IsValid()) return;
@@ -72,14 +72,14 @@ void UPlantyRaceGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 	if (SessionSearch->SearchResults.Num() > 0)
 	{
 		SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(
-			this, &UPlantyRaceGameInstance::OnJoinSessionComplete);
+			this, &UPRGameInstance::OnJoinSessionComplete);
 
 		SessionInterface->JoinSession(
 			0, NAME_GameSession, SessionSearch->SearchResults[0]);
 	}
 }
 
-void UPlantyRaceGameInstance::OnJoinSessionComplete(
+void UPRGameInstance::OnJoinSessionComplete(
 	FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {
 	if (Result == EOnJoinSessionCompleteResult::Success)
@@ -95,22 +95,22 @@ void UPlantyRaceGameInstance::OnJoinSessionComplete(
 	}
 }
 
-void UPlantyRaceGameInstance::JoinGameSession()
+void UPRGameInstance::JoinGameSession()
 {
 	FindSession();
 }
 
-void UPlantyRaceGameInstance::DestroySession()
+void UPRGameInstance::DestroySession()
 {
 	if (!SessionInterface.IsValid()) return;
 
 	SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(
-		this, &UPlantyRaceGameInstance::OnDestroySessionComplete);
+		this, &UPRGameInstance::OnDestroySessionComplete);
 
 	SessionInterface->DestroySession(NAME_GameSession);
 }
 
-void UPlantyRaceGameInstance::OnDestroySessionComplete(
+void UPRGameInstance::OnDestroySessionComplete(
 	FName SessionName, bool bWasSuccessful)
 {
 

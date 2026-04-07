@@ -5,18 +5,18 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "Interfaces/OnlineSessionInterface.h"
-#include "PlantyRaceGameInstance.generated.h"
+#include "PRGameInstance.generated.h"
 
 /**
  *
  */
 UCLASS()
-class PLANTYRACE_API UPlantyRaceGameInstance : public UGameInstance
+class PLANTYRACE_API UPRGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 
 public:
-	UPlantyRaceGameInstance();
+	UPRGameInstance();
 
 	// 방
 	UFUNCTION(BlueprintCallable, Category = "Session")
