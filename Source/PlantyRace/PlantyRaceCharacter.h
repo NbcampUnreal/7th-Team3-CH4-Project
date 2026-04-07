@@ -22,75 +22,102 @@ UCLASS(abstract)
 class APlantyRaceCharacter : public ACharacter
 {
 	GENERATED_BODY()
+public:
+	APlantyRaceCharacter();
+	
+	void Look(const FInputActionValue& Value);
+	void Move(const FInputActionValue& Value);
+	void StartJump(const FInputActionValue& Value);
+	void EndJump(const FInputActionValue& Value);
+	void Grab(const FInputActionValue& Value);
 
-	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* CameraBoom;
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<class UInputAction> MoveAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> LookAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> JumpAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> GrabAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> IA_RandomizeClothes;
 
-	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FollowCamera;
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
+	TObjectPtr<class USpringArmComponent> SpringArmComp;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
+	TObjectPtr<class UCameraComponent> CameraComp;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
+	float MouseSensitivity;
+	
+public:
+	
+	UPROPERTY()
+	TArray<TObjectPtr<USkeletalMeshComponent>> ModularMeshes;
+	
+	UPROPERTY(EditAnywhere, Category="Customization")
+	TArray<TObjectPtr<USkeletalMesh>> PantsOptions;
+
+	UPROPERTY(EditAnywhere, Category="Customization")
+	TArray<TObjectPtr<USkeletalMesh>> ShirtOptions;
+
+	UPROPERTY(EditAnywhere, Category="Customization")
+	TArray<TObjectPtr<USkeletalMesh>> HairOptions;
+	
+	UPROPERTY(EditAnywhere, Category="Customization")
+	TArray<TObjectPtr<USkeletalMesh>> GlassOptions;
+	
+	UPROPERTY(EditAnywhere, Category="Customization")
+	TArray<TObjectPtr<USkeletalMesh>> ShoeOptions;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+	USkeletalMeshComponent* PantsSkeletalMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+	USkeletalMeshComponent* ShirtSkeletalMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+	USkeletalMeshComponent* HairSkeletalMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+	USkeletalMeshComponent* GlassSkeletalMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+	USkeletalMeshComponent* ShoeSkeletalMesh;
+	
+	
+public:
+	UFUNCTION(Server, Reliable)
+	void ServerGrab();
+
+	UFUNCTION(Server, Reliable)
+	void ServerRelease();
+	
+	UFUNCTION()
+	void RandomizeClothes();
+	void InitializeModularMeshes();
+	void SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options);
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	
+	UPROPERTY(Replicated)
+	bool bIsGrabbed = false;
 	
 protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* JumpAction;
+public:	
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
 
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MoveAction;
-
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* LookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MouseLookAction;
-
-public:
-
-	/** Constructor */
-	APlantyRaceCharacter();	
-
-protected:
-
-	/** Initialize input action bindings */
+	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-protected:
-
-	/** Called for movement input */
-	void Move(const FInputActionValue& Value);
-
-	/** Called for looking input */
-	void Look(const FInputActionValue& Value);
-
-public:
-
-	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoMove(float Right, float Forward);
-
-	/** Handles look inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoLook(float Yaw, float Pitch);
-
-	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpStart();
-
-	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpEnd();
-
-public:
-
-	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-
-	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 };
-

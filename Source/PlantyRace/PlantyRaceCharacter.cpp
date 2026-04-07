@@ -1,133 +1,246 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "PlantyRaceCharacter.h"
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "PlantyRace.h"
+#include "Net/UnrealNetwork.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter()
 {
-	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
-	// Don't rotate when the controller rotates. Let that just affect the camera.
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
+	PrimaryActorTick.bCanEverTick = false;
 
-	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
+	bReplicates = true;
+	GetCharacterMovement()->JumpZVelocity = 700.f;
+	
+	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
+	SpringArmComp->SetupAttachment(RootComponent);
+	SpringArmComp->TargetArmLength = 800.f;
+	SpringArmComp->SetRelativeRotation(FRotator(-55.f, 0.f, 0.f)); // 위에서 아래로
+	SpringArmComp->bUsePawnControlRotation = true;
+	
+	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
+	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
+	CameraComp->bUsePawnControlRotation = false;
+	
+	PantsSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PantsMesh"));
+	PantsSkeletalMesh->SetupAttachment(GetMesh());
+	PantsSkeletalMesh->SetLeaderPoseComponent(GetMesh());
 
-	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
-	// instead of recompiling to adjust them
-	GetCharacterMovement()->JumpZVelocity = 500.f;
-	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
-	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
-	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
-	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
+	ShirtSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ShirtMesh"));
+	ShirtSkeletalMesh->SetupAttachment(GetMesh());
+	ShirtSkeletalMesh->SetLeaderPoseComponent(GetMesh());
 
-	// Create a camera boom (pulls in towards the player if there is a collision)
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f;
-	CameraBoom->bUsePawnControlRotation = true;
-
-	// Create a follow camera
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false;
-
+	HairSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HairMesh"));
+	HairSkeletalMesh->SetupAttachment(GetMesh());
+	HairSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+	
+	GlassSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GlassMesh"));
+	GlassSkeletalMesh->SetupAttachment(GetMesh());
+	GlassSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+	
+	ShoeSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ShoeMesh"));
+	ShoeSkeletalMesh->SetupAttachment(GetMesh());
+	ShoeSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+	
+	
+	MouseSensitivity =1.5f;
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
-void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+
+
+
+void APlantyRaceCharacter::Look(const FInputActionValue& Value)
 {
-	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
-		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	const FVector2D LookValue = Value.Get<FVector2D>();
 
-		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Look);
 
-		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Look);
-	}
-	else
+	if (!Controller)
 	{
-		UE_LOG(LogPlantyRace, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		return;
 	}
+
+	AddControllerYawInput(LookValue.X * MouseSensitivity);
+	AddControllerPitchInput(-LookValue.Y * MouseSensitivity);
 }
 
 void APlantyRaceCharacter::Move(const FInputActionValue& Value)
 {
-	// input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
+	const FVector2D MoveValue = Value.Get<FVector2D>();
 
-	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
-}
-
-void APlantyRaceCharacter::Look(const FInputActionValue& Value)
-{
-	// input is a Vector2D
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
-
-	// route the input
-	DoLook(LookAxisVector.X, LookAxisVector.Y);
-}
-
-void APlantyRaceCharacter::DoMove(float Right, float Forward)
-{
-	if (GetController() != nullptr)
+	if (!Controller)
 	{
-		// find out which way is forward
-		const FRotator Rotation = GetController()->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// get forward vector
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
-		// get right vector 
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		// add movement 
-		AddMovementInput(ForwardDirection, Forward);
-		AddMovementInput(RightDirection, Right);
+		return;
 	}
+
+	const FRotator ControlRot = Controller->GetControlRotation();
+	const FRotator YawRot(0.f, ControlRot.Yaw, 0.f);
+
+	const FVector ForwardDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
+	const FVector RightDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
+
+	AddMovementInput(ForwardDir, MoveValue.Y);
+	AddMovementInput(RightDir, MoveValue.X);
 }
 
-void APlantyRaceCharacter::DoLook(float Yaw, float Pitch)
+void APlantyRaceCharacter::StartJump(const FInputActionValue& Value)
 {
-	if (GetController() != nullptr)
-	{
-		// add yaw and pitch input to controller
-		AddControllerYawInput(Yaw);
-		AddControllerPitchInput(Pitch);
-	}
-}
-
-void APlantyRaceCharacter::DoJumpStart()
-{
-	// signal the character to jump
 	Jump();
 }
 
-void APlantyRaceCharacter::DoJumpEnd()
+void APlantyRaceCharacter::EndJump(const FInputActionValue& Value)
 {
-	// signal the character to stop jumping
 	StopJumping();
 }
+
+void APlantyRaceCharacter::Grab(const FInputActionValue& Value)
+{
+	ServerGrab();
+}
+
+
+void APlantyRaceCharacter::ServerGrab_Implementation()
+{
+	FVector Start = GetActorLocation();
+	FVector End = Start + GetActorForwardVector() * 200.f;
+
+	FHitResult Hit;
+	GetWorld()->SweepSingleByChannel(
+		Hit,
+		Start,
+		End,
+		FQuat::Identity,
+		ECC_Pawn,
+		FCollisionShape::MakeSphere(50.f)
+	);
+
+	APlantyRaceCharacter* Target = Cast<APlantyRaceCharacter>(Hit.GetActor());
+	if (Target)
+	{
+		//잡은 타켓이 어떻게 될지는 아직 미정.
+	}
+
+}
+
+void APlantyRaceCharacter::ServerRelease_Implementation()
+{
+	
+}
+
+// Called when the game starts or when spawned
+void APlantyRaceCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	InitializeModularMeshes();
+}
+
+// Called every frame
+void APlantyRaceCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
+void APlantyRaceCharacter::RandomizeClothes()
+{
+	SetRandomMesh(PantsSkeletalMesh, PantsOptions);
+	SetRandomMesh(ShirtSkeletalMesh, ShirtOptions);
+	SetRandomMesh(HairSkeletalMesh, HairOptions);
+	SetRandomMesh(ShoeSkeletalMesh, ShoeOptions);
+}
+
+void APlantyRaceCharacter::InitializeModularMeshes()
+{
+	ModularMeshes.Empty();
+
+	if (PantsSkeletalMesh)
+	{
+		PantsSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+		ModularMeshes.Add(PantsSkeletalMesh);
+	}
+
+	if (ShirtSkeletalMesh)
+	{
+		ShirtSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+		ModularMeshes.Add(ShirtSkeletalMesh);
+	}
+
+	if (HairSkeletalMesh)
+	{
+		HairSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+		ModularMeshes.Add(HairSkeletalMesh);
+	}
+
+	if (GlassSkeletalMesh)
+	{
+		GlassSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+		ModularMeshes.Add(GlassSkeletalMesh);
+	}
+	
+	if (ShoeSkeletalMesh)
+	{
+		ShoeSkeletalMesh->SetLeaderPoseComponent(GetMesh());
+		ModularMeshes.Add(ShoeSkeletalMesh);
+	}
+}
+
+void APlantyRaceCharacter::SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options)
+{
+	if (!TargetMesh || Options.Num() == 0)
+	{
+		return;
+	}
+
+	const int32 RandomIndex = FMath::RandRange(0, Options.Num() - 1);
+	TargetMesh->SetSkeletalMesh(Options[RandomIndex]);
+}
+
+void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(APlantyRaceCharacter, bIsGrabbed);
+}
+
+// Called to bind functionality to input
+void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if (UEnhancedInputComponent* EnhancedInput =Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		
+		if (MoveAction)
+		{
+			EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Move);
+		}
+
+		if (LookAction)
+		{
+			EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Look);
+		}
+
+		if (JumpAction)
+		{
+			EnhancedInput->BindAction(JumpAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::StartJump);
+			EnhancedInput->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlantyRaceCharacter::EndJump);
+		}
+		
+		if (GrabAction)
+		{
+			EnhancedInput->BindAction(GrabAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Grab);
+		}
+		
+		if (IA_RandomizeClothes)
+		{
+			EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::RandomizeClothes);
+		}
+	}
+}
+

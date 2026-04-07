@@ -20,7 +20,8 @@ public class PlantyRace : ModuleRules
 			"UMG",
 			"Slate",
 			"OnlineSubsystem",
-			"OnlineSubsystemUtils"
+			"OnlineSubsystemUtils",
+			"AnimGraphRuntime"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
