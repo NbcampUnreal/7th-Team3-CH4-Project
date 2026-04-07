@@ -4,18 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
-#include "PlantyRacePlayerState.generated.h"
+#include "PRPlayerState.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class PLANTYRACE_API APlantyRacePlayerState : public APlayerState
+class PLANTYRACE_API APRPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 
 public:
-	APlantyRacePlayerState();
+	APRPlayerState();
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;

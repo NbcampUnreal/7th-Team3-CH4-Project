@@ -1,7 +1,7 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 
-#include "PlantyRacePlayerController.h"
+#include "PRPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
@@ -9,7 +9,7 @@
 #include "PlantyRace.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 
-void APlantyRacePlayerController::BeginPlay()
+void APRPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -33,7 +33,7 @@ void APlantyRacePlayerController::BeginPlay()
 	}
 }
 
-void APlantyRacePlayerController::SetupInputComponent()
+void APRPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 

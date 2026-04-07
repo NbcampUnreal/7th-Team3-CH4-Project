@@ -1,6 +1,6 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "PlantyRaceCharacter.h"
+#include "PRCharacter.h"
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -12,7 +12,7 @@
 #include "InputActionValue.h"
 #include "PlantyRace.h"
 
-APlantyRaceCharacter::APlantyRaceCharacter()
+APRCharacter::APRCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -50,7 +50,7 @@ APlantyRaceCharacter::APlantyRaceCharacter()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
-void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void APRCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
@@ -60,11 +60,11 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
 		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Look);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APRCharacter::Move);
+		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &APRCharacter::Look);
 
 		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Look);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APRCharacter::Look);
 	}
 	else
 	{
@@ -72,7 +72,7 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	}
 }
 
-void APlantyRaceCharacter::Move(const FInputActionValue& Value)
+void APRCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
@@ -81,7 +81,7 @@ void APlantyRaceCharacter::Move(const FInputActionValue& Value)
 	DoMove(MovementVector.X, MovementVector.Y);
 }
 
-void APlantyRaceCharacter::Look(const FInputActionValue& Value)
+void APRCharacter::Look(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
@@ -90,7 +90,7 @@ void APlantyRaceCharacter::Look(const FInputActionValue& Value)
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 
-void APlantyRaceCharacter::DoMove(float Right, float Forward)
+void APRCharacter::DoMove(float Right, float Forward)
 {
 	if (GetController() != nullptr)
 	{
@@ -110,7 +110,7 @@ void APlantyRaceCharacter::DoMove(float Right, float Forward)
 	}
 }
 
-void APlantyRaceCharacter::DoLook(float Yaw, float Pitch)
+void APRCharacter::DoLook(float Yaw, float Pitch)
 {
 	if (GetController() != nullptr)
 	{
@@ -120,13 +120,13 @@ void APlantyRaceCharacter::DoLook(float Yaw, float Pitch)
 	}
 }
 
-void APlantyRaceCharacter::DoJumpStart()
+void APRCharacter::DoJumpStart()
 {
 	// signal the character to jump
 	Jump();
 }
 
-void APlantyRaceCharacter::DoJumpEnd()
+void APRCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();

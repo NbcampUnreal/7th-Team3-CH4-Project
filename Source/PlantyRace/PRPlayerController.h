@@ -1,10 +1,10 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "PlantyRacePlayerController.generated.h"
+#include "PRPlayerController.generated.h"
 
 class UInputMappingContext;
 class UUserWidget;
@@ -14,7 +14,7 @@ class UUserWidget;
  *  Manages input mappings
  */
 UCLASS(abstract)
-class APlantyRacePlayerController : public APlayerController
+class APRPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	

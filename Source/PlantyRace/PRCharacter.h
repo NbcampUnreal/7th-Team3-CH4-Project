@@ -1,11 +1,11 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
-#include "PlantyRaceCharacter.generated.h"
+#include "PRCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
@@ -19,7 +19,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  Implements a controllable orbiting camera
  */
 UCLASS(abstract)
-class APlantyRaceCharacter : public ACharacter
+class APRCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -52,7 +52,7 @@ protected:
 public:
 
 	/** Constructor */
-	APlantyRaceCharacter();	
+	APRCharacter();	
 
 protected:
 
