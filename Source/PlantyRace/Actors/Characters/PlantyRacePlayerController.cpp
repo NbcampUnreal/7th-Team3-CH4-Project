@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 
 #include "PlantyRacePlayerController.h"
@@ -8,6 +8,9 @@
 #include "Blueprint/UserWidget.h"
 #include "PlantyRace.h"
 #include "Widgets/Input/SVirtualJoystick.h"
+#include "UI/PRWeatherWidget.h"
+#include "Core/PRGameStateBase.h"
+
 
 void APlantyRacePlayerController::BeginPlay()
 {
@@ -31,6 +34,17 @@ void APlantyRacePlayerController::BeginPlay()
 		}
 
 	}
+
+	CreateWeatherWidget();
+
+	APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(PGS))
+	{
+		return;
+	}
+
+	PGS->OnWeatherChanged.AddUObject(this, &APlantyRacePlayerController::HandleWeatherChanged);
+	HandleWeatherChanged();
 }
 
 void APlantyRacePlayerController::SetupInputComponent()
@@ -58,4 +72,55 @@ void APlantyRacePlayerController::SetupInputComponent()
 			}
 		}
 	}
+}
+
+void APlantyRacePlayerController::CreateWeatherWidget()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	if (!WeatherWidgetClass)
+	{
+		return;
+	}
+
+	UPRWeatherWidget* NewWeatherWidget = CreateWidget<UPRWeatherWidget>(this, WeatherWidgetClass);
+	WeatherWidget = NewWeatherWidget;
+
+	if (!IsValid(WeatherWidget))
+	{
+		return;
+	}
+
+	WeatherWidget->AddToViewport();
+	UpdateWeatherUI();
+}
+
+void APlantyRacePlayerController::UpdateWeatherUI()
+{
+	if (!IsValid(WeatherWidget))
+	{
+		return;
+	}
+
+	AGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState() : nullptr;
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	APRGameStateBase* PGS = Cast<APRGameStateBase>(GS);
+	if (!IsValid(PGS))
+	{
+		return;
+	}
+
+	WeatherWidget->SetWeatherText(PGS->GetWeatherText());
+}
+
+void APlantyRacePlayerController::HandleWeatherChanged()
+{
+	UpdateWeatherUI();
 }
