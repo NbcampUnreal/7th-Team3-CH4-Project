@@ -1,35 +1,77 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Types/WeatherEffectTypes.h"
 #include "PlantyRaceCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
+class UCharacterEffectComponent;
+class APRGameStateBase;
+class AWeatherEffectZone;
+
+UENUM(BlueprintType)
+enum class EFootType : uint8
+{
+	Left,
+	Right
+};
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
-/**
- *  A simple player-controllable third person character
- *  Implements a controllable orbiting camera
- */
+UENUM(BlueprintType)
+enum class EPlayerActionState : uint8
+{
+	Idle	UMETA(DisplayName="Idle"),
+	Jump	UMETA(DisplayName="Jump"),
+	Dive	UMETA(DisplayName="Dive"),
+	Slide	UMETA(DisplayName="Slide"),
+	Attack	UMETA(DisplayName="Attack")
+};
+
+USTRUCT(BlueprintType)
+struct FClothesRepData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 PantsIndex = -1;
+
+	UPROPERTY()
+	int32 ShirtIndex = -1;
+
+	UPROPERTY()
+	int32 HairIndex = -1;
+
+	UPROPERTY()
+	int32 GlassIndex = -1;
+
+	UPROPERTY()
+	int32 ShoeIndex = -1;
+};
+
+
 UCLASS(abstract)
 class APlantyRaceCharacter : public ACharacter
 {
 	GENERATED_BODY()
+
 public:
-	APlantyRaceCharacter();
+	APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer);
 	
 	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
 	void StartJump(const FInputActionValue& Value);
 	void EndJump(const FInputActionValue& Value);
 	void Grab(const FInputActionValue& Value);
+	void Dive(const FInputActionValue& Value);
+	void Landed(const FHitResult& Hit);
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
@@ -45,6 +87,9 @@ public:
 	TObjectPtr<UInputAction> GrabAction;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> DiveAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	TObjectPtr<UInputAction> IA_RandomizeClothes;
 
 	
@@ -56,8 +101,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
 	float MouseSensitivity;
 	
-public:
+	UPROPERTY(EditAnywhere, Category = "Dive")
+	float DiveForwardStrength = 1100.f;
+
+	UPROPERTY(EditAnywhere, Category = "Dive")
+	float DiveUpStrength = 120.f;
 	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slope")
+	float BaseWalkSpeed = 600.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slope")
+	TObjectPtr<UCurveFloat> UphillSpeedCurve;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slope")
+	TObjectPtr<UCurveFloat> DownhillSpeedCurve;
+public:
 	UPROPERTY()
 	TArray<TObjectPtr<USkeletalMeshComponent>> ModularMeshes;
 	
@@ -91,6 +150,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
 	USkeletalMeshComponent* ShoeSkeletalMesh;
 	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Montage")
+	 TObjectPtr<class UAnimMontage> DiveMontage;
 	
 public:
 	UFUNCTION(Server, Reliable)
@@ -99,13 +161,32 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerRelease();
 	
+	UFUNCTION(Server, Reliable)
+	void ServerRandomizeClothes();
+protected:
+	UFUNCTION()
+	void OnRep_ClothesData();
+	
+	
+	
+	void ApplyClothesFromRepData();
+	
+	int32 GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_ClothesData)
+	FClothesRepData ClothesData;
+	void SetMeshByIndex(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options, int32 Index);
+	
+public:
 	UFUNCTION()
 	void RandomizeClothes();
 	void InitializeModularMeshes();
 	void SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	
+	float GetFloorSlopeAngle() const;
+	float GetSlopeMoveDirectionDot() const;
+
+
 	UPROPERTY(Replicated)
 	bool bIsGrabbed = false;
 	
@@ -116,8 +197,124 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State")
+	EPlayerActionState CurrentActionState = EPlayerActionState::Idle;
+	
+	void UpdateSlopeSpeed();
+	bool CanMove() const;
+	bool CanJumpAction() const;
+	bool CanGrabAction() const;
+	bool CanDiveAction() const;
+	void SetActionState(EPlayerActionState NewState);
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual bool CanJumpInternal_Implementation() const override;
+
+	void EnterWeatherZone(
+		ESurfaceEffectType InSurfaceEffectType,
+		float InMoveSpeedMultiplier,
+		float InJumpMultiplier,
+		bool bInBlockJump
+	);
+
+	void ExitWeatherZone();
+
+	void EnterTornado(AActor* InTornadoSource);
+
+	void ExitTornado();
+
+	UFUNCTION(BlueprintCallable)
+	void PlayFootstepSound(EFootType FootType);
+
+	float GetDefaultMaxWalkSpeed() const { return DefaultMaxWalkSpeed; }
+
+	float GetDefaultJumpZVelocity() const { return DefaultJumpZVelocity; }
+
+	AWeatherEffectZone* GetCurrentTornadoZone() const { return CurrentTornadoZone; }
+
+protected:
+	UPROPERTY(VisibleAnywhere, Category = "Zone")
+	float DefaultMaxWalkSpeed = 0.f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Zone")
+	float DefaultJumpZVelocity = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Audio")
+	TObjectPtr<class USoundBase> PuddleFootstepSound;
+
+	UPROPERTY(EditAnywhere, Category = "Audio")
+	FName RightFootstepSocketName;
+
+	UPROPERTY(EditAnywhere, Category = "Audio")
+	FName LeftFootstepSocketName;
+
+	UPROPERTY(ReplicatedUsing = OnRep_InTornado)
+	bool bInTornado = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Tornado")
+	float TornadoElapsedTime = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Tornado")
+	float TornadoTotalDuration = 2.5f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Tornado")
+	float TornadoRiseDuration = 0.7f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoRiseSpeed = 500.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoFallSpeed = -250.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoSuctionSpeed = 400.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoOrbitSpeed = 250.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoMinSuctionDistance = 100.f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoMaxSuctionDistance = 650.f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoMinSuctionScale = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoMaxSuctionScale = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Tornado")
+	float TornadoSuctionEaseExponent = 2.0f;
+
+	UPROPERTY(Replicated)
+	TObjectPtr<AActor> TornadoSourceActor = nullptr;
+
+	UPROPERTY(Replicated)
+	TObjectPtr<AWeatherEffectZone> CurrentTornadoZone = nullptr;
+
+	FTimerHandle TornadoTimerHandle;
+
+	void UpdateTornadoMovement(float DeltaTime);
+
+	bool IsRisePhase() const;
+
+	bool IsTornadoFinished() const;
+
+	FVector GetSuctionVelocity(const FVector& ToCenter) const;
+
+	FVector GetOrbitVelocity(const FVector& ToCenter) const;
+
+	FVector GetVerticalVelocity() const;
+
+	UPROPERTY(VisibleAnywhere)
+	UCharacterEffectComponent* CharacterEffectComp;
+
+	UFUNCTION()
+	void OnRep_InTornado();
+
+	UFUNCTION()
+	void HandleWeatherChanged();
 };
