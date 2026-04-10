@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -8,6 +8,7 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UPRWeatherWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -40,5 +41,21 @@ protected:
 
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
+
+public:
+	void CreateWeatherWidget();
+
+	UFUNCTION()
+	void UpdateWeatherUI();
+
+	UFUNCTION()
+	void HandleWeatherChanged();
+
+protected:
+	UPROPERTY()
+	UPRWeatherWidget* WeatherWidget;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UPRWeatherWidget> WeatherWidgetClass;
 
 };

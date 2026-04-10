@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "Types/WeatherEffectTypes.h"
 #include "PRPlayerState.generated.h"
 
 /**
