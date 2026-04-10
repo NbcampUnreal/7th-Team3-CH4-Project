@@ -12,8 +12,14 @@
 #include "Core/PRGameStateBase.h"
 #include "Components/CharacterEffectComponent.h"
 #include "Actors/Traps/WeatherEffectZone.h"
+#include "Curves/CurveFloat.h"
+#include "PRCharacterMovementComponent.h"
 
-APlantyRaceCharacter::APlantyRaceCharacter()
+APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(
+	ObjectInitializer.SetDefaultSubobjectClass<
+	UPRCharacterMovementComponent>(
+	ACharacter::CharacterMovementComponentName))
 {
     PrimaryActorTick.bCanEverTick = true;
 
@@ -80,6 +86,10 @@ void APlantyRaceCharacter::Move(const FInputActionValue& Value)
     {
         return;
     }
+	if (!CanMove())
+	{
+		return;
+	}
 
     const FVector2D MoveValue = Value.Get<FVector2D>();
 
@@ -113,6 +123,55 @@ void APlantyRaceCharacter::Grab(const FInputActionValue& Value)
     ServerGrab();
 }
 
+void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
+{
+	if (!CanDiveAction())
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	SetActionState(EPlayerActionState::Dive);
+
+	FVector HorizontalVelocity = GetVelocity();
+	HorizontalVelocity.Z = 0.f;
+
+	FVector DiveDirection = GetActorForwardVector();
+	DiveDirection.Z = 0.f;
+	DiveDirection.Normalize();
+
+	const float DiveBoost = 400.f;
+	const float MaxDiveSpeed = 700.f;
+
+	const float SpeedAlongDive = FVector::DotProduct(HorizontalVelocity, DiveDirection);
+
+	const float FinalSpeedAlongDive =
+		FMath::Clamp(SpeedAlongDive + DiveBoost, 0.f, MaxDiveSpeed);
+
+	FVector NewVelocity = DiveDirection * FinalSpeedAlongDive;
+	float CurrentZ = GetVelocity().Z;
+	NewVelocity.Z = CurrentZ + 170.f;
+
+	LaunchCharacter(NewVelocity, true, true);
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		if (DiveMontage)
+		AnimInstance->Montage_Play(DiveMontage);
+	}
+}
+
+void APlantyRaceCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	SetActionState(EPlayerActionState::Idle);
+}
 
 void APlantyRaceCharacter::ServerGrab_Implementation()
 {
@@ -148,6 +207,7 @@ void APlantyRaceCharacter::BeginPlay()
     Super::BeginPlay();
 
     InitializeModularMeshes();
+    ApplyClothesFromRepData();
 
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (!IsValid(MoveComp))
@@ -184,14 +244,66 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
     {
         UpdateTornadoMovement(DeltaTime);
     }
+	Super::Tick(DeltaTime);
+}
+
+void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
+{
+	ClothesData.PantsIndex = GetRandomValidIndex(PantsOptions);
+	ClothesData.ShirtIndex = GetRandomValidIndex(ShirtOptions);
+	ClothesData.HairIndex = GetRandomValidIndex(HairOptions);
+	ClothesData.GlassIndex = GetRandomValidIndex(GlassOptions);
+	ClothesData.ShoeIndex = GetRandomValidIndex(ShoeOptions);
+	
+	ApplyClothesFromRepData();
+	ForceNetUpdate();
+}
+
+void APlantyRaceCharacter::OnRep_ClothesData()
+{
+	ApplyClothesFromRepData();
+}
+
+void APlantyRaceCharacter::ApplyClothesFromRepData()
+{
+	SetMeshByIndex(PantsSkeletalMesh, PantsOptions, ClothesData.PantsIndex);
+	SetMeshByIndex(ShirtSkeletalMesh, ShirtOptions, ClothesData.ShirtIndex);
+	SetMeshByIndex(HairSkeletalMesh, HairOptions, ClothesData.HairIndex);
+	SetMeshByIndex(GlassSkeletalMesh, GlassOptions, ClothesData.GlassIndex);
+	SetMeshByIndex(ShoeSkeletalMesh, ShoeOptions, ClothesData.ShoeIndex);
+}
+
+int32 APlantyRaceCharacter::GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const
+{
+	if (Options.Num() <= 0)
+	{
+		return -1;
+	}
+
+	return FMath::RandRange(0, Options.Num() - 1);
+}
+
+void APlantyRaceCharacter::SetMeshByIndex(USkeletalMeshComponent* TargetMesh,
+	const TArray<TObjectPtr<USkeletalMesh>>& Options, int32 Index)
+{
+	if (!TargetMesh)
+	{
+		return;
+	}
+
+	if (!Options.IsValidIndex(Index))
+	{
+		TargetMesh->SetSkeletalMesh(nullptr);
+		return;
+	}
+
+	TargetMesh->SetSkeletalMesh(Options[Index]);
+	TargetMesh->SetLeaderPoseComponent(GetMesh());
 }
 
 void APlantyRaceCharacter::RandomizeClothes()
 {
-    SetRandomMesh(PantsSkeletalMesh, PantsOptions);
-    SetRandomMesh(ShirtSkeletalMesh, ShirtOptions);
-    SetRandomMesh(HairSkeletalMesh, HairOptions);
-    SetRandomMesh(ShoeSkeletalMesh, ShoeOptions);
+	ServerRandomizeClothes();
 }
 
 void APlantyRaceCharacter::InitializeModularMeshes()
@@ -244,10 +356,138 @@ void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(APlantyRaceCharacter, bIsGrabbed);
+    DOREPLIFETIME(ThisClass, bIsGrabbed);
     DOREPLIFETIME(ThisClass, bInTornado);
     DOREPLIFETIME(ThisClass, TornadoSourceActor);
     DOREPLIFETIME(ThisClass, CurrentTornadoZone);
+	DOREPLIFETIME(ThisClass, bIsGrabbed);
+	DOREPLIFETIME(ThisClass, ClothesData);
+}
+
+float APlantyRaceCharacter::GetFloorSlopeAngle() const
+{
+	if (!GetCharacterMovement())
+	{
+		return 0.f;
+	}
+
+	const FFindFloorResult& FloorResult = GetCharacterMovement()->CurrentFloor;
+
+	if (!FloorResult.IsWalkableFloor())
+	{
+		return 0.f;
+	}
+
+	const FVector FloorNormal = FloorResult.HitResult.ImpactNormal;
+	const float Dot = FVector::DotProduct(FloorNormal, FVector::UpVector);
+	const float ClampedDot = FMath::Clamp(Dot, -1.f, 1.f);
+
+	return FMath::RadiansToDegrees(FMath::Acos(ClampedDot));
+}
+
+float APlantyRaceCharacter::GetSlopeMoveDirectionDot() const
+{
+	if (!GetCharacterMovement())
+	{
+		return 0.f;
+	}
+
+	const FFindFloorResult& FloorResult = GetCharacterMovement()->CurrentFloor;
+	if (!FloorResult.IsWalkableFloor())
+	{
+		return 0.f;
+	}
+
+	const FVector FloorNormal = FloorResult.HitResult.ImpactNormal;
+
+	FVector Velocity2D = GetVelocity();
+	Velocity2D.Z = 0.f;
+
+	if (Velocity2D.IsNearlyZero())
+	{
+		return 0.f;
+	}
+
+	Velocity2D.Normalize();
+
+	FVector UphillDirection = FVector::VectorPlaneProject(FVector::UpVector, FloorNormal).GetSafeNormal();
+
+	return FVector::DotProduct(Velocity2D, UphillDirection);
+}
+
+void APlantyRaceCharacter::UpdateSlopeSpeed()
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	float FinalSpeed = BaseWalkSpeed;
+
+	const float SlopeAngle = GetFloorSlopeAngle();
+	const float MoveDot = GetSlopeMoveDirectionDot();
+
+	if (MoveDot > 0.1f)
+	{
+		if (UphillSpeedCurve)
+		{
+			const float Multiplier = UphillSpeedCurve->GetFloatValue(SlopeAngle);
+			FinalSpeed = BaseWalkSpeed * Multiplier;
+		}
+	}
+	else if (MoveDot < -0.1f)
+	{
+		if (DownhillSpeedCurve)
+		{
+			const float Multiplier = DownhillSpeedCurve->GetFloatValue(SlopeAngle);
+			FinalSpeed = BaseWalkSpeed * Multiplier;
+		}
+	}
+	else
+	{
+		FinalSpeed = BaseWalkSpeed;
+	}
+
+	MoveComp->MaxWalkSpeed = FinalSpeed;
+}
+
+
+bool APlantyRaceCharacter::CanMove() const
+{
+	return CurrentActionState != EPlayerActionState::Dive
+		&& CurrentActionState != EPlayerActionState::Attack
+		&& CurrentActionState != EPlayerActionState::Slide;
+}
+
+bool APlantyRaceCharacter::CanJumpAction() const
+{
+	return CurrentActionState == EPlayerActionState::Idle;
+}
+
+bool APlantyRaceCharacter::CanGrabAction() const
+{
+	return CurrentActionState == EPlayerActionState::Idle
+		|| CurrentActionState == EPlayerActionState::Jump;
+}
+
+bool APlantyRaceCharacter::CanDiveAction() const
+{
+	const UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return false;
+	}
+
+	return MoveComp->IsFalling()
+		&& CurrentActionState != EPlayerActionState::Dive
+		&& CurrentActionState != EPlayerActionState::Attack
+		&& CurrentActionState != EPlayerActionState::Slide;
+}
+
+void APlantyRaceCharacter::SetActionState(EPlayerActionState NewState)
+{
+	CurrentActionState = NewState;
 }
 
 // Called to bind functionality to input
@@ -268,22 +508,27 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
             EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Look);
         }
 
-        if (JumpAction)
-        {
-            EnhancedInput->BindAction(JumpAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::StartJump);
-            EnhancedInput->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlantyRaceCharacter::EndJump);
-        }
-
-        if (GrabAction)
-        {
-            EnhancedInput->BindAction(GrabAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Grab);
-        }
-
-        if (IA_RandomizeClothes)
-        {
-            EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::RandomizeClothes);
-        }
-    }
+		if (JumpAction)
+		{
+			EnhancedInput->BindAction(JumpAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::StartJump);
+			EnhancedInput->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlantyRaceCharacter::EndJump);
+		}
+		
+		if (GrabAction)
+		{
+			EnhancedInput->BindAction(GrabAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Grab);
+		}
+		
+		if (DiveAction)
+		{
+			EnhancedInput->BindAction(DiveAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::Dive);
+		}
+		
+		if (IA_RandomizeClothes)
+		{
+			EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::RandomizeClothes);
+		}
+	}
 }
 
 bool APlantyRaceCharacter::CanJumpInternal_Implementation() const
