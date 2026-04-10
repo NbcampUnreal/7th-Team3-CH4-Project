@@ -333,7 +333,6 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
     {
         UpdateTornadoMovement(DeltaTime);
     }
-	Super::Tick(DeltaTime);
 }
 
 void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
