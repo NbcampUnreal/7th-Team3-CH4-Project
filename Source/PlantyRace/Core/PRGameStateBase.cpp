@@ -24,6 +24,11 @@ void APRGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 void APRGameStateBase::SetWeather(EWeatherState NewWeather)
 {
+    if (!HasAuthority())
+    {
+        return;
+    }
+
     if (CurrentWeather == NewWeather)
     {
         return;

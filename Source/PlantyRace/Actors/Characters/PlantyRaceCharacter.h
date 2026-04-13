@@ -15,6 +15,7 @@ struct FInputActionValue;
 class UCharacterEffectComponent;
 class APRGameStateBase;
 class AWeatherEffectZone;
+class UPRKnockbackComponent;
 
 UENUM(BlueprintType)
 enum class EFootType : uint8
@@ -235,11 +236,28 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void PlayFootstepSound(EFootType FootType);
 
+	void SetKnockedDown(bool bValue);
+
 	float GetDefaultMaxWalkSpeed() const { return DefaultMaxWalkSpeed; }
 
 	float GetDefaultJumpZVelocity() const { return DefaultJumpZVelocity; }
 
 	AWeatherEffectZone* GetCurrentTornadoZone() const { return CurrentTornadoZone; }
+
+
+	bool IsRisePhase() const;
+
+	bool IsTornadoFinished() const;
+
+	bool IsKnockedDown() const;
+
+	FVector GetSuctionVelocity(const FVector& ToCenter) const;
+
+	FVector GetOrbitVelocity(const FVector& ToCenter) const;
+
+	FVector GetVerticalVelocity() const;
+
+	UPRKnockbackComponent* GetKnockbackComp() const { return KnockbackComp; }
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Zone")
@@ -311,29 +329,30 @@ protected:
 	UPROPERTY(Replicated)
 	TObjectPtr<AActor> TornadoSourceActor = nullptr;
 
+	UPROPERTY(ReplicatedUsing = OnRep_IsKnockedDown)	
+	bool bIsKnockedDown = false;
+
 	UPROPERTY(Replicated)
 	TObjectPtr<AWeatherEffectZone> CurrentTornadoZone = nullptr;
 
 	FTimerHandle TornadoTimerHandle;
 
-	void UpdateTornadoMovement(float DeltaTime);
-
-	bool IsRisePhase() const;
-
-	bool IsTornadoFinished() const;
-
-	FVector GetSuctionVelocity(const FVector& ToCenter) const;
-
-	FVector GetOrbitVelocity(const FVector& ToCenter) const;
-
-	FVector GetVerticalVelocity() const;
-
 	UPROPERTY(VisibleAnywhere)
 	UCharacterEffectComponent* CharacterEffectComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPRKnockbackComponent> KnockbackComp;
+
+	void UpdateTornadoMovement(float DeltaTime);
 
 	UFUNCTION()
 	void OnRep_InTornado();
 
 	UFUNCTION()
+	void OnRep_IsKnockedDown();
+
+	UFUNCTION()
 	void HandleWeatherChanged();
+
+	void HandleKnockedDownChanged();
 };
