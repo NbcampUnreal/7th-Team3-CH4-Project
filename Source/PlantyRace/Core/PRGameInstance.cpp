@@ -22,7 +22,7 @@ void UPRGameInstance::CreateSession()
 	{
 		SessionInterface->DestroySession(NAME_GameSession);
 	}
-
+	SessionInterface->OnCreateSessionCompleteDelegates.Clear();
 	SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(
 		this, &UPRGameInstance::OnCreateSessionComplete);
 
@@ -53,6 +53,7 @@ void UPRGameInstance::FindSession()
 	SessionInterface = Subsystem->GetSessionInterface();
 	if (!SessionInterface.IsValid()) return;
 
+	SessionInterface->OnEndSessionCompleteDelegates.Clear();
 	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(
 		this, &UPRGameInstance::OnFindSessionsComplete);
 
@@ -104,6 +105,7 @@ void UPRGameInstance::DestroySession()
 {
 	if (!SessionInterface.IsValid()) return;
 
+	SessionInterface->OnDestroySessionCompleteDelegates.Clear();
 	SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(
 		this, &UPRGameInstance::OnDestroySessionComplete);
 
