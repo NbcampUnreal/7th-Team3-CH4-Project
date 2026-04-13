@@ -31,10 +31,10 @@ public:
 
 	FOnWeatherChanged OnWeatherChanged;
 
-	UPROPERTY(ReplicatedUsing = OnRep_RoundNumber,BlueprintReadOnly, Categroy = "Round")
+	UPROPERTY(ReplicatedUsing = OnRep_RoundNumber,BlueprintReadOnly, Category = "Round")
 	int32 RoundNumber;
 
-	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, BlueprintReadOnly,Category = "Round")
+	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, BlueprintReadOnly, Category = "Round")
 	float RemainingTime;
 
 	UFUNCTION()
