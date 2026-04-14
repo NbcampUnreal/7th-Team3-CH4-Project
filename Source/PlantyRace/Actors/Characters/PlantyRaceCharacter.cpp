@@ -205,6 +205,11 @@ void APlantyRaceCharacter::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
 
+    if (IsKnockedDown())
+    {
+        return;
+    }
+
 	SetActionState(EPlayerActionState::Idle);
 }
 
@@ -645,6 +650,11 @@ bool APlantyRaceCharacter::CanJumpInternal_Implementation() const
         return false;
     }
 
+    if (IsKnockedDown())
+    {
+        return false;
+    }
+
     return Super::CanJumpInternal_Implementation();
 }
 
@@ -878,7 +888,80 @@ FVector APlantyRaceCharacter::GetVerticalVelocity() const
     }
 
     return VerticalVelocity;
-}   
+}
+
+void APlantyRaceCharacter::PlayKnockedDownMontage()
+{
+    USkeletalMeshComponent* MeshComp = GetMesh();
+    if (!IsValid(MeshComp))
+    {
+        return;
+    }
+
+    UAnimInstance* AI = MeshComp->GetAnimInstance();
+    if (!IsValid(AI))
+    {
+        return;
+    }
+
+    if (!KnockedDownMontage)
+    {
+        return;
+    }
+
+    AI->Montage_Play(KnockedDownMontage);
+}
+
+void APlantyRaceCharacter::PlayGetUpMontage()
+{
+    USkeletalMeshComponent* MeshComp = GetMesh();
+    if (!IsValid(MeshComp))
+    {
+        return;
+    }
+
+    UAnimInstance* AI = MeshComp->GetAnimInstance();
+    if (!IsValid(AI))
+    {
+        return;
+    }
+
+    if (!GetUpMontage)
+    {
+        return;
+    }
+
+    AI->Montage_Play(GetUpMontage);
+}
+
+void APlantyRaceCharacter::LockMovement()
+{
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!IsValid(MoveComp))
+    {
+        return;
+    }
+
+    MoveComp->DisableMovement();
+}
+
+void APlantyRaceCharacter::UnlockMovement()
+{
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!IsValid(MoveComp))
+    {
+        return;
+    }
+
+    if (MoveComp->IsMovingOnGround())
+    {
+        MoveComp->SetMovementMode(MOVE_Walking);
+    }
+    else
+    {
+        MoveComp->SetMovementMode(MOVE_Falling);
+    }
+}
 
 void APlantyRaceCharacter::OnRep_InTornado()
 {
@@ -933,7 +1016,17 @@ void APlantyRaceCharacter::HandleWeatherChanged()
 
 void APlantyRaceCharacter::HandleKnockedDownChanged()
 {
-
+    if (bIsKnockedDown)
+    {
+        StopJumping();
+        SetActionState(EPlayerActionState::KnockedDown);
+        PlayKnockedDownMontage();
+    }
+    else
+    {
+        SetActionState(EPlayerActionState::Idle); // AnimMontage 추가시 제거
+        PlayGetUpMontage();
+    }
 }
 
 void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
