@@ -15,6 +15,7 @@ struct FInputActionValue;
 class UCharacterEffectComponent;
 class APRGameStateBase;
 class AWeatherEffectZone;
+class UPRKnockbackComponent;
 
 UENUM(BlueprintType)
 enum class EFootType : uint8
@@ -69,7 +70,8 @@ public:
 	void Move(const FInputActionValue& Value);
 	void StartJump(const FInputActionValue& Value);
 	void EndJump(const FInputActionValue& Value);
-	void Grab(const FInputActionValue& Value);
+	void StartGrab(const FInputActionValue& Value);
+	void EndGrab(const FInputActionValue& Value);
 	void Dive(const FInputActionValue& Value);
 	void Landed(const FHitResult& Hit);
 
@@ -94,6 +96,9 @@ public:
 
 	
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Grab")
+	TObjectPtr<USceneComponent> GrabHoldPoint;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
 	TObjectPtr<class USpringArmComponent> SpringArmComp;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
@@ -154,13 +159,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Montage")
 	 TObjectPtr<class UAnimMontage> DiveMontage;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Montage")
+	TObjectPtr<class UAnimMontage> GrabMontage;
+	
 public:
 	UFUNCTION(Server, Reliable)
 	void ServerGrab();
 
 	UFUNCTION(Server, Reliable)
 	void ServerRelease();
-	
+
 	UFUNCTION(Server, Reliable)
 	void ServerRandomizeClothes();
 protected:
@@ -228,11 +236,28 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void PlayFootstepSound(EFootType FootType);
 
+	void SetKnockedDown(bool bValue);
+
 	float GetDefaultMaxWalkSpeed() const { return DefaultMaxWalkSpeed; }
 
 	float GetDefaultJumpZVelocity() const { return DefaultJumpZVelocity; }
 
 	AWeatherEffectZone* GetCurrentTornadoZone() const { return CurrentTornadoZone; }
+
+
+	bool IsRisePhase() const;
+
+	bool IsTornadoFinished() const;
+
+	bool IsKnockedDown() const;
+
+	FVector GetSuctionVelocity(const FVector& ToCenter) const;
+
+	FVector GetOrbitVelocity(const FVector& ToCenter) const;
+
+	FVector GetVerticalVelocity() const;
+
+	UPRKnockbackComponent* GetKnockbackComp() const { return KnockbackComp; }
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Zone")
@@ -288,33 +313,46 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Tornado")
 	float TornadoSuctionEaseExponent = 2.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Grab")
+	float GrabRange = 200.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Grab")
+	float GrabRadius = 50.f;
 
 	UPROPERTY(Replicated)
+	TObjectPtr<APlantyRaceCharacter> GrabTarget = nullptr;
+
+	UPROPERTY(Replicated)
+	TObjectPtr<APlantyRaceCharacter> GrabbedBy = nullptr;
+	
+	UPROPERTY(Replicated)
 	TObjectPtr<AActor> TornadoSourceActor = nullptr;
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsKnockedDown)	
+	bool bIsKnockedDown = false;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<AWeatherEffectZone> CurrentTornadoZone = nullptr;
 
 	FTimerHandle TornadoTimerHandle;
 
-	void UpdateTornadoMovement(float DeltaTime);
-
-	bool IsRisePhase() const;
-
-	bool IsTornadoFinished() const;
-
-	FVector GetSuctionVelocity(const FVector& ToCenter) const;
-
-	FVector GetOrbitVelocity(const FVector& ToCenter) const;
-
-	FVector GetVerticalVelocity() const;
-
 	UPROPERTY(VisibleAnywhere)
 	UCharacterEffectComponent* CharacterEffectComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPRKnockbackComponent> KnockbackComp;
+
+	void UpdateTornadoMovement(float DeltaTime);
 
 	UFUNCTION()
 	void OnRep_InTornado();
 
 	UFUNCTION()
+	void OnRep_IsKnockedDown();
+
+	UFUNCTION()
 	void HandleWeatherChanged();
+
+	void HandleKnockedDownChanged();
 };

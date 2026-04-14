@@ -1,4 +1,7 @@
 ﻿#include "PlantyRaceCharacter.h"
+
+#include <ThirdParty/ShaderConductor/ShaderConductor/External/DirectXShaderCompiler/include/dxc/DXIL/DxilConstants.h>
+
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -14,6 +17,9 @@
 #include "Actors/Traps/WeatherEffectZone.h"
 #include "Curves/CurveFloat.h"
 #include "PRCharacterMovementComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/PRKnockbackComponent.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
@@ -36,6 +42,10 @@ APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectIniti
     CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
     CameraComp->bUsePawnControlRotation = false;
 
+	GrabHoldPoint = CreateDefaultSubobject<USceneComponent>(TEXT("GrabHoldPoint"));
+	GrabHoldPoint->SetupAttachment(RootComponent);
+	GrabHoldPoint->SetRelativeLocation(FVector(100.f, 0.f, 50.f));
+	
     PantsSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PantsMesh"));
     PantsSkeletalMesh->SetupAttachment(GetMesh());
     PantsSkeletalMesh->SetLeaderPoseComponent(GetMesh());
@@ -58,7 +68,12 @@ APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectIniti
 
     CharacterEffectComp = CreateDefaultSubobject<UCharacterEffectComponent>(TEXT("CharacterEffectComp"));
 
+    KnockbackComp = CreateDefaultSubobject<UPRKnockbackComponent>(TEXT("KnockbackComp"));
+
     MouseSensitivity = 1.5f;
+	
+	GrabTarget = nullptr;
+	GrabbedBy = nullptr;
     // Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
     // are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
@@ -118,10 +133,30 @@ void APlantyRaceCharacter::EndJump(const FInputActionValue& Value)
     StopJumping();
 }
 
-void APlantyRaceCharacter::Grab(const FInputActionValue& Value)
+void APlantyRaceCharacter::StartGrab(const FInputActionValue& Value)
 {
-    ServerGrab();
+	if (!CanGrabAction())
+	{
+		return;
+	}
+
+	ServerGrab();
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (GrabMontage)
+		{
+			AnimInstance->Montage_Play(GrabMontage);
+		}
+	}
 }
+
+void APlantyRaceCharacter::EndGrab(const FInputActionValue& Value)
+{
+	ServerRelease();
+}
+
+
 
 void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 {
@@ -175,30 +210,87 @@ void APlantyRaceCharacter::Landed(const FHitResult& Hit)
 
 void APlantyRaceCharacter::ServerGrab_Implementation()
 {
+	if (!CanGrabAction())
+	{
+		return;
+	}
+	
+	if (GrabTarget)
+	{
+		return;
+	}
+
     FVector Start = GetActorLocation();
-    FVector End = Start + GetActorForwardVector() * 200.f;
+    FVector End = Start + GetActorForwardVector() * 30.f;
 
     FHitResult Hit;
-    GetWorld()->SweepSingleByChannel(
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	const bool bHit =  GetWorld()->SweepSingleByChannel(
         Hit,
         Start,
         End,
         FQuat::Identity,
         ECC_Pawn,
-        FCollisionShape::MakeSphere(50.f)
+        FCollisionShape::MakeSphere(50.f),
+        Params
     );
+	FColor Color = bHit ? FColor::Red : FColor::Green;
 
+	DrawDebugSphere(GetWorld(), End, 50.f, 16, Color, false, 2.f);
+	DrawDebugLine(GetWorld(), Start, End, Color, false, 2.f);
+	if (!bHit)
+	{
+		return;
+	}
     APlantyRaceCharacter* Target = Cast<APlantyRaceCharacter>(Hit.GetActor());
-    if (Target)
+    if (!Target)
     {
-        //잡은 타켓이 어떻게 될지는 아직 미정.
+       return;
     }
+	if (Target == this)
+	{
+		return;
+	}
+	if (Target->bIsGrabbed)
+	{
+		return;
+	}
+	GrabTarget = Target;
+	Target->bIsGrabbed = true;
+	Target->GrabbedBy = this;
 
+	if (UCharacterMovementComponent* MoveComp = Target->GetCharacterMovement())
+	{
+		MoveComp->DisableMovement();
+	}
+
+	Target->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Target->AttachToComponent(
+	GrabHoldPoint,
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale
+	);
 }
 
 void APlantyRaceCharacter::ServerRelease_Implementation()
 {
-
+	if (!GrabTarget)
+	{
+		return;
+	}
+	GrabTarget->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	
+	if(UCharacterMovementComponent* MoveComp = GrabTarget->GetCharacterMovement())	
+	{
+		MoveComp->SetMovementMode(MOVE_Walking);
+	}
+	GrabTarget->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	
+	GrabTarget->bIsGrabbed = false;
+	GrabTarget->GrabbedBy = nullptr;
+	GrabTarget = nullptr;
 }
 
 // Called when the game starts or when spawned
@@ -244,7 +336,6 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
     {
         UpdateTornadoMovement(DeltaTime);
     }
-	Super::Tick(DeltaTime);
 }
 
 void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
@@ -360,8 +451,10 @@ void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
     DOREPLIFETIME(ThisClass, bInTornado);
     DOREPLIFETIME(ThisClass, TornadoSourceActor);
     DOREPLIFETIME(ThisClass, CurrentTornadoZone);
-	DOREPLIFETIME(ThisClass, bIsGrabbed);
 	DOREPLIFETIME(ThisClass, ClothesData);
+	DOREPLIFETIME(APlantyRaceCharacter, GrabTarget);
+	DOREPLIFETIME(APlantyRaceCharacter, GrabbedBy);
+    DOREPLIFETIME(ThisClass, bIsKnockedDown);
 }
 
 float APlantyRaceCharacter::GetFloorSlopeAngle() const
@@ -444,12 +537,14 @@ void APlantyRaceCharacter::UpdateSlopeSpeed()
 			FinalSpeed = BaseWalkSpeed * Multiplier;
 		}
 	}
-	else
-	{
-		FinalSpeed = BaseWalkSpeed;
-	}
 
-	MoveComp->MaxWalkSpeed = FinalSpeed;
+    float EffectMultiplier = 1.f;
+    if (IsValid(CharacterEffectComp))
+    {
+        EffectMultiplier = CharacterEffectComp->GetMoveSpeedMultiplier();
+    }
+
+    MoveComp->MaxWalkSpeed = FinalSpeed * EffectMultiplier;
 }
 
 
@@ -457,7 +552,8 @@ bool APlantyRaceCharacter::CanMove() const
 {
 	return CurrentActionState != EPlayerActionState::Dive
 		&& CurrentActionState != EPlayerActionState::Attack
-		&& CurrentActionState != EPlayerActionState::Slide;
+		&& CurrentActionState != EPlayerActionState::Slide
+        && !IsKnockedDown();
 }
 
 bool APlantyRaceCharacter::CanJumpAction() const
@@ -514,10 +610,11 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 			EnhancedInput->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlantyRaceCharacter::EndJump);
 		}
 		
-		if (GrabAction)
-		{
-			EnhancedInput->BindAction(GrabAction, ETriggerEvent::Triggered, this, &APlantyRaceCharacter::Grab);
-		}
+    	if (GrabAction)
+    	{
+    		EnhancedInput->BindAction(GrabAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::StartGrab);
+    		EnhancedInput->BindAction(GrabAction, ETriggerEvent::Completed, this, &APlantyRaceCharacter::EndGrab);
+    	}
 		
 		if (DiveAction)
 		{
@@ -695,6 +792,18 @@ void APlantyRaceCharacter::PlayFootstepSound(EFootType FootType)
     );
 }
 
+void APlantyRaceCharacter::SetKnockedDown(bool bValue)
+{
+    if (bIsKnockedDown == bValue)
+    {
+        return;
+    }
+
+    bIsKnockedDown = bValue;
+
+    HandleKnockedDownChanged();
+}
+
 bool APlantyRaceCharacter::IsRisePhase() const
 {
     return TornadoElapsedTime < TornadoRiseDuration;
@@ -703,6 +812,11 @@ bool APlantyRaceCharacter::IsRisePhase() const
 bool APlantyRaceCharacter::IsTornadoFinished() const
 {
     return TornadoElapsedTime >= TornadoTotalDuration;
+}
+
+bool APlantyRaceCharacter::IsKnockedDown() const
+{
+    return bIsKnockedDown;
 }
 
 FVector APlantyRaceCharacter::GetSuctionVelocity(const FVector& ToCenter) const
@@ -794,6 +908,11 @@ void APlantyRaceCharacter::OnRep_InTornado()
     }
 }
 
+void APlantyRaceCharacter::OnRep_IsKnockedDown()
+{
+    HandleKnockedDownChanged();
+}
+
 void APlantyRaceCharacter::HandleWeatherChanged()
 {
     APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
@@ -810,6 +929,11 @@ void APlantyRaceCharacter::HandleWeatherChanged()
     const EWeatherState NewWeather = PGS->GetCurrentWeather();
 
     CharacterEffectComp->SetWeatherState(NewWeather);
+}
+
+void APlantyRaceCharacter::HandleKnockedDownChanged()
+{
+
 }
 
 void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
