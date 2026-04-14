@@ -31,6 +31,21 @@ public:
 
 	FOnWeatherChanged OnWeatherChanged;
 
+	UPROPERTY(ReplicatedUsing = OnRep_RoundNumber,BlueprintReadOnly, Category = "Round")
+	int32 RoundNumber;
+
+	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, BlueprintReadOnly, Category = "Round")
+	float RemainingTime;
+
+	UFUNCTION()
+	void OnRep_RoundNumber();
+
+	UFUNCTION()
+	void OnRep_RemainingTime();
+
+	void SetRoundNumber(int32 NewRound);
+	void SetRemainingTime(float NewTime);
+
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_WeatherState, BlueprintReadOnly)
 	EWeatherState CurrentWeather;

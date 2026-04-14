@@ -1,7 +1,4 @@
-﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
-
-
-#include "PRPlayerState.h"
+﻿#include "PRPlayerState.h"
 #include "Net/UnrealNetwork.h"
 
 APRPlayerState::APRPlayerState()
@@ -9,6 +6,17 @@ APRPlayerState::APRPlayerState()
 	PlayerScore = 0.0f;
 	GrowthRate = 0.0f;
 	bEliminated = false;
+
+	FinishRank = 0;
+	bFinished = false;
+	bQualified = false;
+	bFinalWinner = false;
+}
+
+void APRPlayerState::ResetRoundState()
+{
+	FinishRank = 0;
+	bFinished = false;
 }
 
 void APRPlayerState::GetLifetimeReplicatedProps(
@@ -19,4 +27,9 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 	DOREPLIFETIME(APRPlayerState, PlayerScore);
 	DOREPLIFETIME(APRPlayerState, GrowthRate);
 	DOREPLIFETIME(APRPlayerState, bEliminated);
+
+	DOREPLIFETIME(APRPlayerState, FinishRank);
+	DOREPLIFETIME(APRPlayerState, bFinished);
+	DOREPLIFETIME(APRPlayerState, bQualified);
+	DOREPLIFETIME(APRPlayerState, bFinalWinner);
 }

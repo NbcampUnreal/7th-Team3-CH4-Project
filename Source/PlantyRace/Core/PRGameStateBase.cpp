@@ -8,6 +8,8 @@
 APRGameStateBase::APRGameStateBase()
 {
     CurrentWeather = EWeatherState::None;
+    RoundNumber = 1;
+    RemainingTime = 0.0f;
 }
 
 void APRGameStateBase::OnRep_WeatherState()
@@ -20,10 +22,17 @@ void APRGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(ThisClass, CurrentWeather);
+    DOREPLIFETIME(ThisClass, RoundNumber);
+    DOREPLIFETIME(ThisClass, RemainingTime);
 }
 
 void APRGameStateBase::SetWeather(EWeatherState NewWeather)
 {
+    if (!HasAuthority())
+    {
+        return;
+    }
+
     if (CurrentWeather == NewWeather)
     {
         return;
@@ -49,4 +58,26 @@ FText APRGameStateBase::GetWeatherText() const
     default:
         return FText::FromString(TEXT("Unknown"));
     }
+}
+
+void APRGameStateBase::OnRep_RoundNumber()
+{
+    //UI 업데이트
+}
+
+void APRGameStateBase::OnRep_RemainingTime()
+{
+    //UI 업데이트
+}
+
+void APRGameStateBase::SetRoundNumber(int32 NewRound)
+{
+    RoundNumber = NewRound;
+    OnRep_RoundNumber();
+}
+
+void APRGameStateBase::SetRemainingTime(float NewTime)
+{
+    RemainingTime = NewTime;
+    OnRep_RemainingTime();
 }

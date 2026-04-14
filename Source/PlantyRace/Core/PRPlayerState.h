@@ -1,15 +1,10 @@
-﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Types/WeatherEffectTypes.h"
 #include "PRPlayerState.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class PLANTYRACE_API APRPlayerState : public APlayerState
 {
@@ -32,5 +27,39 @@ public:
 	// 탈락 여부
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Player")
 	bool bEliminated;
-	
+
+	// 골인 순위
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Race")
+	int32 FinishRank;
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetFinishRank() const { return FinishRank; }
+
+	// 골인 여부
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Race")
+	bool bFinished;
+
+	// 다음 라운드 진출 여부
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Race")
+	bool bQualified;
+
+	// 최종 우승 여부
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Race")
+	bool bFinalWinner;
+
+	// 라운드 상태 초기화
+	UFUNCTION(BlueprintCallable)
+	void ResetRoundState();
+
+	void SetFinishRank(int32 InRank) { FinishRank = InRank; }
+
+	void SetFinished(bool bInFinished) { bFinished = bInFinished; }
+	bool IsFinished() const { return bFinished; }
+
+	void SetQualified(bool bInQualified) { bQualified = bInQualified; }
+
+	void SetEliminated(bool bInEliminated) { bEliminated = bInEliminated; }
+
+	void SetFinalWinner(bool bInWinner) { bFinalWinner = bInWinner; }
+
 };

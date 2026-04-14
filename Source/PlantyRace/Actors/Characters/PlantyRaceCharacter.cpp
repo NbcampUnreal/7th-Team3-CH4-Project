@@ -19,6 +19,7 @@
 #include "PRCharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/PRKnockbackComponent.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
@@ -66,6 +67,8 @@ APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectIniti
     ShoeSkeletalMesh->SetLeaderPoseComponent(GetMesh());
 
     CharacterEffectComp = CreateDefaultSubobject<UCharacterEffectComponent>(TEXT("CharacterEffectComp"));
+
+    KnockbackComp = CreateDefaultSubobject<UPRKnockbackComponent>(TEXT("KnockbackComp"));
 
     MouseSensitivity = 1.5f;
 	
@@ -333,7 +336,6 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
     {
         UpdateTornadoMovement(DeltaTime);
     }
-	Super::Tick(DeltaTime);
 }
 
 void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
@@ -452,6 +454,7 @@ void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(ThisClass, ClothesData);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabTarget);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabbedBy);
+    DOREPLIFETIME(ThisClass, bIsKnockedDown);
 }
 
 float APlantyRaceCharacter::GetFloorSlopeAngle() const
@@ -534,12 +537,14 @@ void APlantyRaceCharacter::UpdateSlopeSpeed()
 			FinalSpeed = BaseWalkSpeed * Multiplier;
 		}
 	}
-	else
-	{
-		FinalSpeed = BaseWalkSpeed;
-	}
 
-	MoveComp->MaxWalkSpeed = FinalSpeed;
+    float EffectMultiplier = 1.f;
+    if (IsValid(CharacterEffectComp))
+    {
+        EffectMultiplier = CharacterEffectComp->GetMoveSpeedMultiplier();
+    }
+
+    MoveComp->MaxWalkSpeed = FinalSpeed * EffectMultiplier;
 }
 
 
@@ -547,7 +552,8 @@ bool APlantyRaceCharacter::CanMove() const
 {
 	return CurrentActionState != EPlayerActionState::Dive
 		&& CurrentActionState != EPlayerActionState::Attack
-		&& CurrentActionState != EPlayerActionState::Slide;
+		&& CurrentActionState != EPlayerActionState::Slide
+        && !IsKnockedDown();
 }
 
 bool APlantyRaceCharacter::CanJumpAction() const
@@ -786,6 +792,18 @@ void APlantyRaceCharacter::PlayFootstepSound(EFootType FootType)
     );
 }
 
+void APlantyRaceCharacter::SetKnockedDown(bool bValue)
+{
+    if (bIsKnockedDown == bValue)
+    {
+        return;
+    }
+
+    bIsKnockedDown = bValue;
+
+    HandleKnockedDownChanged();
+}
+
 bool APlantyRaceCharacter::IsRisePhase() const
 {
     return TornadoElapsedTime < TornadoRiseDuration;
@@ -794,6 +812,11 @@ bool APlantyRaceCharacter::IsRisePhase() const
 bool APlantyRaceCharacter::IsTornadoFinished() const
 {
     return TornadoElapsedTime >= TornadoTotalDuration;
+}
+
+bool APlantyRaceCharacter::IsKnockedDown() const
+{
+    return bIsKnockedDown;
 }
 
 FVector APlantyRaceCharacter::GetSuctionVelocity(const FVector& ToCenter) const
@@ -885,6 +908,11 @@ void APlantyRaceCharacter::OnRep_InTornado()
     }
 }
 
+void APlantyRaceCharacter::OnRep_IsKnockedDown()
+{
+    HandleKnockedDownChanged();
+}
+
 void APlantyRaceCharacter::HandleWeatherChanged()
 {
     APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
@@ -901,6 +929,11 @@ void APlantyRaceCharacter::HandleWeatherChanged()
     const EWeatherState NewWeather = PGS->GetCurrentWeather();
 
     CharacterEffectComp->SetWeatherState(NewWeather);
+}
+
+void APlantyRaceCharacter::HandleKnockedDownChanged()
+{
+
 }
 
 void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
