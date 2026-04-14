@@ -48,6 +48,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComp;
 
+	// 회전 속도 조절
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rotate")
 	float DegreesPerSecond;
 

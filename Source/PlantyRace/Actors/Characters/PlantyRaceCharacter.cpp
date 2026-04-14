@@ -1,7 +1,5 @@
 ﻿#include "PlantyRaceCharacter.h"
-
 #include <ThirdParty/ShaderConductor/ShaderConductor/External/DirectXShaderCompiler/include/dxc/DXIL/DxilConstants.h>
-
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -19,6 +17,8 @@
 #include "PRCharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
+#include "GameMode/CheckPoint.h"
+#include "GameMode/SpawnPoint.h"
 #include "Components/PRKnockbackComponent.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
@@ -204,6 +204,11 @@ void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 void APlantyRaceCharacter::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
+
+    if (IsKnockedDown())
+    {
+        return;
+    }
 
 	SetActionState(EPlayerActionState::Idle);
 }
@@ -645,6 +650,11 @@ bool APlantyRaceCharacter::CanJumpInternal_Implementation() const
         return false;
     }
 
+    if (IsKnockedDown())
+    {
+        return false;
+    }
+
     return Super::CanJumpInternal_Implementation();
 }
 
@@ -878,7 +888,80 @@ FVector APlantyRaceCharacter::GetVerticalVelocity() const
     }
 
     return VerticalVelocity;
-}   
+}
+
+void APlantyRaceCharacter::PlayKnockedDownMontage()
+{
+    USkeletalMeshComponent* MeshComp = GetMesh();
+    if (!IsValid(MeshComp))
+    {
+        return;
+    }
+
+    UAnimInstance* AI = MeshComp->GetAnimInstance();
+    if (!IsValid(AI))
+    {
+        return;
+    }
+
+    if (!KnockedDownMontage)
+    {
+        return;
+    }
+
+    AI->Montage_Play(KnockedDownMontage);
+}
+
+void APlantyRaceCharacter::PlayGetUpMontage()
+{
+    USkeletalMeshComponent* MeshComp = GetMesh();
+    if (!IsValid(MeshComp))
+    {
+        return;
+    }
+
+    UAnimInstance* AI = MeshComp->GetAnimInstance();
+    if (!IsValid(AI))
+    {
+        return;
+    }
+
+    if (!GetUpMontage)
+    {
+        return;
+    }
+
+    AI->Montage_Play(GetUpMontage);
+}
+
+void APlantyRaceCharacter::LockMovement()
+{
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!IsValid(MoveComp))
+    {
+        return;
+    }
+
+    MoveComp->DisableMovement();
+}
+
+void APlantyRaceCharacter::UnlockMovement()
+{
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!IsValid(MoveComp))
+    {
+        return;
+    }
+
+    if (MoveComp->IsMovingOnGround())
+    {
+        MoveComp->SetMovementMode(MOVE_Walking);
+    }
+    else
+    {
+        MoveComp->SetMovementMode(MOVE_Falling);
+    }
+}
 
 void APlantyRaceCharacter::OnRep_InTornado()
 {
@@ -933,7 +1016,17 @@ void APlantyRaceCharacter::HandleWeatherChanged()
 
 void APlantyRaceCharacter::HandleKnockedDownChanged()
 {
-
+    if (bIsKnockedDown)
+    {
+        StopJumping();
+        SetActionState(EPlayerActionState::KnockedDown);
+        PlayKnockedDownMontage();
+    }
+    else
+    {
+        SetActionState(EPlayerActionState::Idle); // AnimMontage 추가시 제거
+        PlayGetUpMontage();
+    }
 }
 
 void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
@@ -968,4 +1061,30 @@ void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
     {
         ExitTornado();
     }
+}
+
+void APlantyRaceCharacter::SetLastCheckpoint(ACheckPoint* NewCheckpoint, int32 NewCheckpointIndex)
+{
+    if (!NewCheckpoint)
+    {
+        return;
+    }
+
+    if (NewCheckpointIndex < LastCheckpointIndex)
+    {
+        return;
+    }
+
+    LastCheckpoint = NewCheckpoint;
+    LastCheckpointIndex = NewCheckpointIndex;
+}
+
+void APlantyRaceCharacter::SetStartSpawnPoint(ASpawnPoint* NewSpawnPoint)
+{
+    if (!NewSpawnPoint)
+    {
+        return;
+    }
+
+    StartSpawnPoint = NewSpawnPoint;
 }

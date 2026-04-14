@@ -16,6 +16,7 @@ class UCharacterEffectComponent;
 class APRGameStateBase;
 class AWeatherEffectZone;
 class UPRKnockbackComponent;
+class UAnimMontage;
 
 UENUM(BlueprintType)
 enum class EFootType : uint8
@@ -29,11 +30,12 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 UENUM(BlueprintType)
 enum class EPlayerActionState : uint8
 {
-	Idle	UMETA(DisplayName="Idle"),
-	Jump	UMETA(DisplayName="Jump"),
-	Dive	UMETA(DisplayName="Dive"),
-	Slide	UMETA(DisplayName="Slide"),
-	Attack	UMETA(DisplayName="Attack")
+	Idle		UMETA(DisplayName="Idle"),
+	Jump		UMETA(DisplayName="Jump"),
+	Dive		UMETA(DisplayName="Dive"),
+	Slide		UMETA(DisplayName="Slide"),
+	Attack		UMETA(DisplayName="Attack"),
+	KnockedDown UMETA(DisplayName = "KnockedDown")
 };
 
 USTRUCT(BlueprintType)
@@ -65,7 +67,7 @@ class APlantyRaceCharacter : public ACharacter
 
 public:
 	APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer);
-	
+
 	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
 	void StartJump(const FInputActionValue& Value);
@@ -76,92 +78,92 @@ public:
 	void Landed(const FHitResult& Hit);
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<class UInputAction> MoveAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> LookAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> JumpAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> GrabAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> DiveAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> IA_RandomizeClothes;
 
-	
+
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Grab")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grab")
 	TObjectPtr<USceneComponent> GrabHoldPoint;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<class USpringArmComponent> SpringArmComp;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<class UCameraComponent> CameraComp;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
 	float MouseSensitivity;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Dive")
 	float DiveForwardStrength = 1100.f;
 
 	UPROPERTY(EditAnywhere, Category = "Dive")
 	float DiveUpStrength = 120.f;
-	
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slope")
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	float BaseWalkSpeed = 600.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slope")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	TObjectPtr<UCurveFloat> UphillSpeedCurve;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slope")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	TObjectPtr<UCurveFloat> DownhillSpeedCurve;
 public:
 	UPROPERTY()
 	TArray<TObjectPtr<USkeletalMeshComponent>> ModularMeshes;
-	
-	UPROPERTY(EditAnywhere, Category="Customization")
+
+	UPROPERTY(EditAnywhere, Category = "Customization")
 	TArray<TObjectPtr<USkeletalMesh>> PantsOptions;
 
-	UPROPERTY(EditAnywhere, Category="Customization")
+	UPROPERTY(EditAnywhere, Category = "Customization")
 	TArray<TObjectPtr<USkeletalMesh>> ShirtOptions;
 
-	UPROPERTY(EditAnywhere, Category="Customization")
+	UPROPERTY(EditAnywhere, Category = "Customization")
 	TArray<TObjectPtr<USkeletalMesh>> HairOptions;
-	
-	UPROPERTY(EditAnywhere, Category="Customization")
+
+	UPROPERTY(EditAnywhere, Category = "Customization")
 	TArray<TObjectPtr<USkeletalMesh>> GlassOptions;
-	
-	UPROPERTY(EditAnywhere, Category="Customization")
+
+	UPROPERTY(EditAnywhere, Category = "Customization")
 	TArray<TObjectPtr<USkeletalMesh>> ShoeOptions;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ClothMath")
 	USkeletalMeshComponent* PantsSkeletalMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ClothMath")
 	USkeletalMeshComponent* ShirtSkeletalMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ClothMath")
 	USkeletalMeshComponent* HairSkeletalMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ClothMath")
 	USkeletalMeshComponent* GlassSkeletalMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ClothMath")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ClothMath")
 	USkeletalMeshComponent* ShoeSkeletalMesh;
-	
+
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Montage")
-	 TObjectPtr<class UAnimMontage> DiveMontage;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Montage")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Montage")
+	TObjectPtr<class UAnimMontage> DiveMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Montage")
 	TObjectPtr<class UAnimMontage> GrabMontage;
-	
+
 public:
 	UFUNCTION(Server, Reliable)
 	void ServerGrab();
@@ -174,17 +176,17 @@ public:
 protected:
 	UFUNCTION()
 	void OnRep_ClothesData();
-	
-	
-	
+
+
+
 	void ApplyClothesFromRepData();
-	
+
 	int32 GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const;
-	
+
 	UPROPERTY(ReplicatedUsing = OnRep_ClothesData)
 	FClothesRepData ClothesData;
 	void SetMeshByIndex(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options, int32 Index);
-	
+
 public:
 	UFUNCTION()
 	void RandomizeClothes();
@@ -197,18 +199,18 @@ public:
 
 	UPROPERTY(Replicated)
 	bool bIsGrabbed = false;
-	
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerActionState CurrentActionState = EPlayerActionState::Idle;
-	
+
 	void UpdateSlopeSpeed();
 	bool CanMove() const;
 	bool CanJumpAction() const;
@@ -244,7 +246,6 @@ public:
 
 	AWeatherEffectZone* GetCurrentTornadoZone() const { return CurrentTornadoZone; }
 
-
 	bool IsRisePhase() const;
 
 	bool IsTornadoFinished() const;
@@ -258,6 +259,16 @@ public:
 	FVector GetVerticalVelocity() const;
 
 	UPRKnockbackComponent* GetKnockbackComp() const { return KnockbackComp; }
+
+	void PlayKnockedDownMontage();
+
+	void PlayGetUpMontage();
+
+	UFUNCTION()
+	void LockMovement();
+
+	UFUNCTION()
+	void UnlockMovement();
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Zone")
@@ -313,23 +324,29 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Tornado")
 	float TornadoSuctionEaseExponent = 2.0f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Grab")
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grab")
 	float GrabRange = 200.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Grab")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grab")
 	float GrabRadius = 50.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Montage")
+	TObjectPtr<UAnimMontage> KnockedDownMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Montage")
+	TObjectPtr<UAnimMontage> GetUpMontage;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<APlantyRaceCharacter> GrabTarget = nullptr;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<APlantyRaceCharacter> GrabbedBy = nullptr;
-	
+
 	UPROPERTY(Replicated)
 	TObjectPtr<AActor> TornadoSourceActor = nullptr;
 
-	UPROPERTY(ReplicatedUsing = OnRep_IsKnockedDown)	
+	UPROPERTY(ReplicatedUsing = OnRep_IsKnockedDown)
 	bool bIsKnockedDown = false;
 
 	UPROPERTY(Replicated)
@@ -355,4 +372,32 @@ protected:
 	void HandleWeatherChanged();
 
 	void HandleKnockedDownChanged();
+
+public:
+	// 리스폰 관련 추가
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	void SetLastCheckpoint(class ACheckPoint* NewCheckpoint, int32 NewCheckpointIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	class ACheckPoint* GetLastCheckpoint() const { return LastCheckpoint; }
+
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	int32 GetLastCheckpointIndex() const { return LastCheckpointIndex; }
+
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	void SetStartSpawnPoint(class ASpawnPoint* NewSpawnPoint);
+
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	class ASpawnPoint* GetStartSpawnPoint() const { return StartSpawnPoint; }
+
+protected:
+	// 리스폰 관련 추가
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Respawn")
+	TObjectPtr<class ACheckPoint> LastCheckpoint = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Respawn")
+	int32 LastCheckpointIndex = -1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Respawn")
+	TObjectPtr<class ASpawnPoint> StartSpawnPoint = nullptr;
 };

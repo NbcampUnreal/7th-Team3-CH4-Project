@@ -1,6 +1,8 @@
 ﻿#include "GameMode/RespawnTrigger.h"
 #include "Components/BoxComponent.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
+#include "GameMode/PRGMB.h"
+#include "Engine/World.h"
 
 ARespawnTrigger::ARespawnTrigger()
 {
@@ -30,10 +32,20 @@ void ARespawnTrigger::OnOverlapBegin(
 	const FHitResult& SweepResult
 )
 {
+	if (!HasAuthority())
+		return;
+
 	APlantyRaceCharacter* Player = Cast<APlantyRaceCharacter>(OtherActor);
 
 	if (!Player)
 		return;
+
+	APRGMB* PRGameMode = GetWorld() ? Cast<APRGMB>(GetWorld()->GetAuthGameMode()) : nullptr;
+
+	if (!PRGameMode)
+		return;
+
+	PRGameMode->RespawnPlayer(Player); // Added
 
 	UE_LOG(LogTemp, Warning, TEXT("Player Fell! Respawn Triggered"));
 }

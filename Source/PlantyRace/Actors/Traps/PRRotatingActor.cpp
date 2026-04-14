@@ -46,7 +46,6 @@ void APRRotatingActor::BeginPlay()
 
 		ServerStartTime = GS->GetServerWorldTimeSeconds();
 		bCanRotate = true;
-		ForceNetUpdate();
 	}
 }
 
@@ -99,9 +98,48 @@ void APRRotatingActor::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, U
 	{
 		return;
 	}
+	
+	const FVector PivotLocation = GetActorLocation();
+	const FVector HitPoint = Hit.ImpactPoint;
+	
+	FVector RadiusDir = HitPoint - PivotLocation;
+	RadiusDir.Z = 0.f;
 
-	const FVector KnockbackDir = Hit.Normal * -1.f;
-	const FVector LaunchVelocity = (KnockbackDir * KnockbackPower) + FVector(0.f, 0.f, KnockbackUpPower);
+	if (RadiusDir.IsNearlyZero())
+	{
+		return;
+	}
+
+	RadiusDir = RadiusDir.GetSafeNormal();
+
+	FVector TangentDir = FVector::ZeroVector;
+	if (DegreesPerSecond >= 0.f)
+	{
+		TangentDir = FVector(-RadiusDir.Y, RadiusDir.X, 0.f);
+	}
+	else
+	{
+		TangentDir = FVector(RadiusDir.Y, -RadiusDir.X, 0.f);
+	}
+
+	FVector ToImpactDir = HitPoint - MeshComp->GetComponentLocation();
+	ToImpactDir.Z = 0.f;
+
+	if (ToImpactDir.IsNearlyZero())
+	{
+		return;
+	}
+
+	ToImpactDir = ToImpactDir.GetSafeNormal();
+
+	const float Dot = FVector::DotProduct(TangentDir, ToImpactDir);
+	
+	if (Dot <= 0.f)
+	{
+		return;
+	}
+	
+	const FVector LaunchVelocity = (TangentDir * KnockbackPower) + FVector(0.f, 0.f, KnockbackUpPower);
 	const float DownDuration = KnockbackDownDuration;
 
 	KBC->ApplyKnockback(LaunchVelocity, DownDuration);

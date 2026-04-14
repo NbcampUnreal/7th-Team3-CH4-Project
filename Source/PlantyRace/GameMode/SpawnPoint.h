@@ -1,30 +1,18 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "GameFramework/PlayerStart.h"
 #include "SpawnPoint.generated.h"
 
-class USceneComponent;
-class UArrowComponent;
-
 UCLASS()
-class PLANTYRACE_API ASpawnPoint : public AActor
+class PLANTYRACE_API ASpawnPoint : public APlayerStart
 {
 	GENERATED_BODY()
 
 public:
-	ASpawnPoint();
-
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<USceneComponent> SceneRoot;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UArrowComponent> ArrowComponent;
+	ASpawnPoint(const FObjectInitializer& ObjectInitializer);
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpawnPoint")
 	int32 SpawnIndex = 0;
-
-	FORCEINLINE UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
 };
