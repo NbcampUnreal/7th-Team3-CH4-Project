@@ -1,14 +1,7 @@
 ﻿#include "GameMode/SpawnPoint.h"
-#include "Components/ArrowComponent.h"
-#include "Components/SceneComponent.h"
 
-ASpawnPoint::ASpawnPoint()
+ASpawnPoint::ASpawnPoint(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = false;
-
-	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
-	SetRootComponent(SceneRoot);
-
-	ArrowComponent = CreateDefaultSubobject<UArrowComponent>(TEXT("ArrowComponent"));
-	ArrowComponent->SetupAttachment(SceneRoot);
 }

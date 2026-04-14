@@ -1,7 +1,5 @@
 ﻿#include "PlantyRaceCharacter.h"
-
 #include <ThirdParty/ShaderConductor/ShaderConductor/External/DirectXShaderCompiler/include/dxc/DXIL/DxilConstants.h>
-
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -19,6 +17,8 @@
 #include "PRCharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
+#include "GameMode/CheckPoint.h"
+#include "GameMode/SpawnPoint.h"
 #include "Components/PRKnockbackComponent.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
@@ -968,4 +968,30 @@ void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
     {
         ExitTornado();
     }
+}
+
+void APlantyRaceCharacter::SetLastCheckpoint(ACheckPoint* NewCheckpoint, int32 NewCheckpointIndex)
+{
+    if (!NewCheckpoint)
+    {
+        return;
+    }
+
+    if (NewCheckpointIndex < LastCheckpointIndex)
+    {
+        return;
+    }
+
+    LastCheckpoint = NewCheckpoint;
+    LastCheckpointIndex = NewCheckpointIndex;
+}
+
+void APlantyRaceCharacter::SetStartSpawnPoint(ASpawnPoint* NewSpawnPoint)
+{
+    if (!NewSpawnPoint)
+    {
+        return;
+    }
+
+    StartSpawnPoint = NewSpawnPoint;
 }
