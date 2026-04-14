@@ -14,7 +14,7 @@
 - 총 6명 참여
 - 본 README는 서버 아키텍처 담당 파트 기준으로 작성
 
-## 🎯 담당 역할 — Multiplayer Server Architecture
+##  담당 역할 — Multiplayer Server Architecture
 
 ### Server Authority 구조 설계
 - 모든 게임 판정은 Server에서만 처리
