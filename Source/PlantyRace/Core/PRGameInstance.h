@@ -34,6 +34,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Session")
 	FString GameMapName;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Map")
+	TArray<FString> MapNames;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Map")
+	int32 CurrentMapIndex;
+
 private:
 	IOnlineSessionPtr SessionInterface;
 
