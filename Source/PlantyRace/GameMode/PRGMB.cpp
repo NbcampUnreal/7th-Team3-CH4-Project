@@ -1,5 +1,7 @@
 ﻿#include "GameMode/PRGMB.h"
 #include "GameMode/SpawnPoint.h"
+#include "GameMode/CheckPoint.h"
+#include "Actors/Characters/PlantyRaceCharacter.h"
 #include "Core/PRPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerState.h"
@@ -32,6 +34,70 @@ void APRGMB::PostLogin(APlayerController* NewPlayer)
 	}
 }
 
+AActor* APRGMB::ChoosePlayerStart_Implementation(AController* Player)
+{
+	if (SpawnPoints.Num() <= 0)
+	{
+		CollectSpawnPoints();
+	}
+
+	if (SpawnPoints.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ChoosePlayerStart] No SpawnPoints found"));
+		return Super::ChoosePlayerStart_Implementation(Player);
+	}
+
+	const int32 SpawnArrayIndex = NextSpawnIndex % SpawnPoints.Num();
+	ASpawnPoint* SelectedSpawnPoint = SpawnPoints[SpawnArrayIndex];
+	NextSpawnIndex++;
+
+	if (Player && SelectedSpawnPoint)
+	{
+		ControllerSpawnPointMap.FindOrAdd(Player) = SelectedSpawnPoint;
+
+		UE_LOG(LogTemp, Warning, TEXT("[ChoosePlayerStart] Selected SpawnPoint: %s / SpawnIndex: %d"),
+			*SelectedSpawnPoint->GetName(),
+			SelectedSpawnPoint->SpawnIndex);
+
+		return SelectedSpawnPoint;
+	}
+
+	return Super::ChoosePlayerStart_Implementation(Player);
+}
+
+APawn* APRGMB::SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot)
+{
+	APawn* NewPawn = Super::SpawnDefaultPawnFor_Implementation(NewPlayer, StartSpot);
+
+	if (!NewPawn)
+	{
+		return nullptr;
+	}
+
+	APlantyRaceCharacter* PlayerCharacter = Cast<APlantyRaceCharacter>(NewPawn);
+	ASpawnPoint* SpawnPoint = Cast<ASpawnPoint>(StartSpot);
+
+	if (PlayerCharacter && SpawnPoint)
+	{
+		PlayerCharacter->SetStartSpawnPoint(SpawnPoint);
+
+		if (NewPlayer)
+		{
+			ControllerSpawnPointMap.FindOrAdd(NewPlayer) = SpawnPoint;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[Spawn] StartSpawnPoint set: %s"),
+			*SpawnPoint->GetName());
+	}
+
+	return NewPawn;
+}
+
+void APRGMB::RestartPlayer(AController* NewPlayer)
+{
+	Super::RestartPlayer(NewPlayer);
+}
+
 void APRGMB::CollectSpawnPoints()
 {
 	TArray<AActor*> FoundActors;
@@ -50,6 +116,18 @@ void APRGMB::CollectSpawnPoints()
 	SortSpawnPoints();
 
 	UE_LOG(LogTemp, Warning, TEXT("[GameMode] Collected SpawnPoints: %d"), SpawnPoints.Num());
+
+	for (int32 i = 0; i < SpawnPoints.Num(); ++i)
+	{
+		if (SpawnPoints[i])
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[GameMode] SpawnPoints[%d] = %s / SpawnIndex = %d / Location = %s"),
+				i,
+				*SpawnPoints[i]->GetName(),
+				SpawnPoints[i]->SpawnIndex,
+				*SpawnPoints[i]->GetActorLocation().ToString());
+		}
+	}
 }
 
 void APRGMB::SortSpawnPoints()
@@ -68,6 +146,55 @@ ASpawnPoint* APRGMB::GetSpawnPointByIndex(int32 Index) const
 	}
 
 	return nullptr;
+}
+
+void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
+{
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	if (ACheckPoint* LastCheckpoint = PlayerCharacter->GetLastCheckpoint())
+	{
+		PlayerCharacter->SetActorLocationAndRotation(
+			LastCheckpoint->GetRespawnLocation(),
+			LastCheckpoint->GetRespawnRotation()
+		);
+
+		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to LastCheckpoint"));
+		return;
+	}
+
+	if (AController* Controller = PlayerCharacter->GetController())
+	{
+		if (TObjectPtr<ASpawnPoint>* FoundSpawn = ControllerSpawnPointMap.Find(Controller))
+		{
+			if (*FoundSpawn)
+			{
+				PlayerCharacter->SetActorLocationAndRotation(
+					(*FoundSpawn)->GetActorLocation(),
+					(*FoundSpawn)->GetActorRotation()
+				);
+
+				UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (ControllerMap)"));
+				return;
+			}
+		}
+	}
+
+	if (ASpawnPoint* StartSpawn = PlayerCharacter->GetStartSpawnPoint())
+	{
+		PlayerCharacter->SetActorLocationAndRotation(
+			StartSpawn->GetActorLocation(),
+			StartSpawn->GetActorRotation()
+		);
+
+		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (Character)"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Respawn] No valid respawn point"));
 }
 
 void APRGMB::StartRound1()

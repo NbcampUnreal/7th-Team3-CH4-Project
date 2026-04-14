@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/ArrowComponent.h"
 #include "CheckPoint.generated.h"
 
 class UBoxComponent;
@@ -44,4 +45,7 @@ public:
 
 	FORCEINLINE UBoxComponent* GetBoxCollision() const { return BoxCollision; }
 	FORCEINLINE UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
+
+	FORCEINLINE FVector GetRespawnLocation() const { return ArrowComponent ? ArrowComponent->GetComponentLocation() : GetActorLocation(); }
+	FORCEINLINE FRotator GetRespawnRotation() const { return ArrowComponent ? ArrowComponent->GetComponentRotation() : GetActorRotation(); }
 };
