@@ -7,6 +7,9 @@
 class ASpawnPoint;
 class APRPlayerState;
 class APlayerController;
+class AController;
+class APlantyRaceCharacter;
+class ACheckPoint;
 
 UENUM(BlueprintType)
 enum class EPRMatchRound : uint8
@@ -28,10 +31,19 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+	virtual APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
+	virtual void RestartPlayer(AController* NewPlayer) override;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn")
 	TArray<TObjectPtr<ASpawnPoint>> SpawnPoints;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn")
+	int32 NextSpawnIndex = 0;
+
+	UPROPERTY()
+	TMap<TObjectPtr<AController>, TObjectPtr<ASpawnPoint>> ControllerSpawnPointMap;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Round")
 	EPRMatchRound CurrentRound = EPRMatchRound::None;
@@ -55,6 +67,9 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable, Category = "Spawn")
 	ASpawnPoint* GetSpawnPointByIndex(int32 Index) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Respawn")
+	void RespawnPlayer(APlantyRaceCharacter* PlayerCharacter);
 
 	UFUNCTION(BlueprintCallable, Category = "Round")
 	void StartRound1();

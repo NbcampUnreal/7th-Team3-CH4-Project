@@ -2,6 +2,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
+#include "Actors/Characters/PlantyRaceCharacter.h"
 
 ACheckPoint::ACheckPoint()
 {
@@ -44,6 +45,14 @@ void ACheckPoint::OnCheckpointBeginOverlap(
 	{
 		return;
 	}
+
+	APlantyRaceCharacter* PlayerCharacter = Cast<APlantyRaceCharacter>(OtherActor);
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	PlayerCharacter->SetLastCheckpoint(this, CheckpointIndex);
 
 	UE_LOG(LogTemp, Warning, TEXT("Checkpoint Overlap: %s entered CheckPoint %d"),
 		*OtherActor->GetName(),

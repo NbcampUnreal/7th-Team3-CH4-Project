@@ -33,3 +33,8 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 	DOREPLIFETIME(APRPlayerState, bQualified);
 	DOREPLIFETIME(APRPlayerState, bFinalWinner);
 }
+
+void APRPlayerState::ServerRequestOvergrow_Implementation()
+{
+	GrowthRate = 0.0f;
+}
