@@ -62,4 +62,8 @@ public:
 
 	void SetFinalWinner(bool bInWinner) { bFinalWinner = bInWinner; }
 
+	//탈락 처리 요청 클라->서버
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RPC")
+	void ServerRequestOvergrow();
+
 };

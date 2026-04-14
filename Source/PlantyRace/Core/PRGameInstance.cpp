@@ -8,6 +8,13 @@
 UPRGameInstance::UPRGameInstance()
 {
 	GameMapName = TEXT("TestLevel");
+	CurrentMapIndex = 0;
+
+	MapNames.Add(TEXT("L_Title"));
+	MapNames.Add(TEXT("L_Lobby"));
+	MapNames.Add(TEXT("L_Round1"));
+	MapNames.Add(TEXT("L_Round2"));
+	MapNames.Add(TEXT("L_Result"));
 }
 
 void UPRGameInstance::CreateSession()
