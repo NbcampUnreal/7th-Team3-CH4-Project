@@ -10,6 +10,11 @@ UPRKnockbackComponent::UPRKnockbackComponent()
 
 void UPRKnockbackComponent::ApplyKnockback(const FVector& LaunchVelocity, float InDownDuration)
 {
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
 	APlantyRaceCharacter* OwnerCharacter = Cast<APlantyRaceCharacter>(GetOwner());
 	if (!IsValid(OwnerCharacter))
 	{
@@ -50,6 +55,11 @@ bool UPRKnockbackComponent::IsKnockedDown() const
 
 void UPRKnockbackComponent::RecoverFromKnockback()
 {
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
 	APlantyRaceCharacter* OwnerCharacter = Cast<APlantyRaceCharacter>(GetOwner());
 	if (!IsValid(OwnerCharacter))
 	{

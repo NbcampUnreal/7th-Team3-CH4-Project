@@ -16,6 +16,7 @@ class UCharacterEffectComponent;
 class APRGameStateBase;
 class AWeatherEffectZone;
 class UPRKnockbackComponent;
+class UAnimMontage;
 
 UENUM(BlueprintType)
 enum class EFootType : uint8
@@ -29,11 +30,12 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 UENUM(BlueprintType)
 enum class EPlayerActionState : uint8
 {
-	Idle	UMETA(DisplayName = "Idle"),
-	Jump	UMETA(DisplayName = "Jump"),
-	Dive	UMETA(DisplayName = "Dive"),
-	Slide	UMETA(DisplayName = "Slide"),
-	Attack	UMETA(DisplayName = "Attack")
+	Idle		UMETA(DisplayName="Idle"),
+	Jump		UMETA(DisplayName="Jump"),
+	Dive		UMETA(DisplayName="Dive"),
+	Slide		UMETA(DisplayName="Slide"),
+	Attack		UMETA(DisplayName="Attack"),
+	KnockedDown UMETA(DisplayName = "KnockedDown")
 };
 
 USTRUCT(BlueprintType)
@@ -244,7 +246,6 @@ public:
 
 	AWeatherEffectZone* GetCurrentTornadoZone() const { return CurrentTornadoZone; }
 
-
 	bool IsRisePhase() const;
 
 	bool IsTornadoFinished() const;
@@ -258,6 +259,16 @@ public:
 	FVector GetVerticalVelocity() const;
 
 	UPRKnockbackComponent* GetKnockbackComp() const { return KnockbackComp; }
+
+	void PlayKnockedDownMontage();
+
+	void PlayGetUpMontage();
+
+	UFUNCTION()
+	void LockMovement();
+
+	UFUNCTION()
+	void UnlockMovement();
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Zone")
@@ -319,6 +330,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grab")
 	float GrabRadius = 50.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Montage")
+	TObjectPtr<UAnimMontage> KnockedDownMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Montage")
+	TObjectPtr<UAnimMontage> GetUpMontage;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<APlantyRaceCharacter> GrabTarget = nullptr;

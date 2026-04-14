@@ -21,7 +21,8 @@ public class PlantyRace : ModuleRules
 			"Slate",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
-			"AnimGraphRuntime"
+			"AnimGraphRuntime",
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

@@ -19,11 +19,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool IsKnockedDown() const;
 
+	float GetDownDuration() const { return DownDuration; }
+
 private:
 	UPROPERTY(EditAnywhere, Category = "Knockback")
 	float DownDuration = 1.f;
 
-	UPROPERTY()
 	FTimerHandle KnockbackTimerHandle;
 
 	void RecoverFromKnockback();
