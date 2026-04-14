@@ -40,7 +40,17 @@ void UPRGameInstance::CreateSession()
 	SessionSettings.bShouldAdvertise = true;
 	SessionSettings.bUsesPresence = false;
 
-	SessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
+	const int32 LocalPlayerIndex = 0;
+	if (LocalPlayers.Num() > 0)
+	{
+		SessionInterface->CreateSession(
+			*LocalPlayers[LocalPlayerIndex]->GetPreferredUniqueNetId(),
+			NAME_GameSession, SessionSettings);
+	}
+	else
+	{
+		SessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
+	}
 }
 
 void UPRGameInstance::OnCreateSessionComplete(
@@ -60,7 +70,7 @@ void UPRGameInstance::FindSession()
 	SessionInterface = Subsystem->GetSessionInterface();
 	if (!SessionInterface.IsValid()) return;
 
-	SessionInterface->OnEndSessionCompleteDelegates.Clear();
+	SessionInterface->OnFindSessionsCompleteDelegates.Clear();
 	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(
 		this, &UPRGameInstance::OnFindSessionsComplete);
 
