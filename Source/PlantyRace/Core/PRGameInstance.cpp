@@ -1,13 +1,14 @@
 ﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
 
-
 #include "PRGameInstance.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 
 UPRGameInstance::UPRGameInstance()
 {
-	GameMapName = TEXT("TestLevel");
+	GameMapName = TEXT("L_Round1");
 	CurrentMapIndex = 0;
 
 	MapNames.Add(TEXT("L_Title"));
@@ -15,6 +16,71 @@ UPRGameInstance::UPRGameInstance()
 	MapNames.Add(TEXT("L_Round1"));
 	MapNames.Add(TEXT("L_Round2"));
 	MapNames.Add(TEXT("L_Result"));
+}
+
+FString UPRGameInstance::GetCurrentMapName() const
+{
+	if (MapNames.IsValidIndex(CurrentMapIndex))
+	{
+		return MapNames[CurrentMapIndex];
+	}
+
+	return FString();
+}
+
+bool UPRGameInstance::TravelToMapByIndex(int32 NewMapIndex)
+{
+	if (!MapNames.IsValidIndex(NewMapIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GameInstance] Invalid Map Index: %d"), NewMapIndex);
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GameInstance] World is null"));
+		return false;
+	}
+
+	CurrentMapIndex = NewMapIndex;
+	const FString TargetMapName = MapNames[CurrentMapIndex];
+
+	UE_LOG(LogTemp, Warning, TEXT("[GameInstance] TravelToMapByIndex -> %s"), *TargetMapName);
+
+	World->ServerTravel(TargetMapName + TEXT("?Listen"));
+	return true;
+}
+
+bool UPRGameInstance::TravelToNextMap()
+{
+	const int32 NextIndex = CurrentMapIndex + 1;
+	return TravelToMapByIndex(NextIndex);
+}
+
+bool UPRGameInstance::TravelToResultMap()
+{
+	const int32 ResultIndex = MapNames.IndexOfByKey(TEXT("L_Result"));
+	if (ResultIndex == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GameInstance] L_Result not found in MapNames"));
+		return false;
+	}
+
+	return TravelToMapByIndex(ResultIndex);
+}
+
+void UPRGameInstance::ResetMapFlow()
+{
+	const int32 Round1Index = MapNames.IndexOfByKey(TEXT("L_Round1"));
+	if (Round1Index != INDEX_NONE)
+	{
+		CurrentMapIndex = Round1Index;
+	}
+	else
+	{
+		CurrentMapIndex = 0;
+	}
 }
 
 void UPRGameInstance::CreateSession()
@@ -29,11 +95,11 @@ void UPRGameInstance::CreateSession()
 	{
 		SessionInterface->DestroySession(NAME_GameSession);
 	}
+
 	SessionInterface->OnCreateSessionCompleteDelegates.Clear();
 	SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(
 		this, &UPRGameInstance::OnCreateSessionComplete);
 
-	// 방설정
 	FOnlineSessionSettings SessionSettings;
 	SessionSettings.bIsLANMatch = true;
 	SessionSettings.NumPublicConnections = 10;
@@ -51,16 +117,23 @@ void UPRGameInstance::CreateSession()
 	{
 		SessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
 	}
-
-	SessionSettings.Set(FName("SESSION_NAME"), FString(TEXT("PlantyRace_Room")), EOnlineDataAdvertisementType::ViaOnlineService);
 }
 
-void UPRGameInstance::OnCreateSessionComplete(
-	FName SessionName, bool bWasSuccessful)
+void UPRGameInstance::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	if (bWasSuccessful)
 	{
-		GetWorld()->ServerTravel(GameMapName + TEXT("?Listen"));
+		const int32 Round1Index = MapNames.IndexOfByKey(TEXT("L_Round1"));
+		if (Round1Index != INDEX_NONE)
+		{
+			CurrentMapIndex = Round1Index;
+			GameMapName = MapNames[CurrentMapIndex];
+		}
+
+		if (UWorld* World = GetWorld())
+		{
+			World->ServerTravel(GameMapName + TEXT("?Listen"));
+		}
 	}
 }
 
@@ -76,7 +149,6 @@ void UPRGameInstance::FindSession()
 	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(
 		this, &UPRGameInstance::OnFindSessionsComplete);
 
-	//검색설정
 	SessionSearch = MakeShareable(new FOnlineSessionSearch());
 	SessionSearch->bIsLanQuery = true;
 	SessionSearch->MaxSearchResults = 10;
@@ -131,37 +203,6 @@ void UPRGameInstance::DestroySession()
 	SessionInterface->DestroySession(NAME_GameSession);
 }
 
-void UPRGameInstance::OnDestroySessionComplete(
-	FName SessionName, bool bWasSuccessful)
+void UPRGameInstance::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
-
-}
-
-TArray<FString> UPRGameInstance::GetFoundSessionNames()
-{
-	TArray<FString> Names;
-	if (!SessionSearch.IsValid()) return Names;
-
-	for (auto& Result : SessionSearch->SearchResults)
-	{
-		// 방 이름 가져오기
-		FString SessionName;
-		Result.Session.SessionSettings.Get(
-			FName("SESSION_NAME"), SessionName);
-		Names.Add(SessionName);
-	}
-	return Names;
-}
-
-void UPRGameInstance::JoinSessionByIndex(int32 Index)
-{
-	if (!SessionSearch.IsValid()) return;
-	if (!SessionSearch->SearchResults.IsValidIndex(Index)) return;
-
-	SessionInterface->OnJoinSessionCompleteDelegates.Clear();
-	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(
-		this, &UPRGameInstance::OnJoinSessionComplete);
-
-	SessionInterface->JoinSession(
-		0, NAME_GameSession, SessionSearch->SearchResults[Index]);
 }

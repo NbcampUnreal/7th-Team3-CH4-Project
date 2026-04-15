@@ -7,9 +7,6 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "PRGameInstance.generated.h"
 
-/**
- *
- */
 UCLASS()
 class PLANTYRACE_API UPRGameInstance : public UGameInstance
 {
@@ -34,26 +31,33 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Session")
 	FString GameMapName;
 
-	UFUNCTION(BlueprintCallable, Category = "Session")
-	TArray<FString> GetFoundSessionNames();
-
-	UFUNCTION(BlueprintCallable, Category = "Session")
-	void JoinSessionByIndex(int32 Index);
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Map")
 	TArray<FString> MapNames;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Map")
 	int32 CurrentMapIndex;
 
+	UFUNCTION(BlueprintCallable, Category = "Map")
+	FString GetCurrentMapName() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Map")
+	bool TravelToMapByIndex(int32 NewMapIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "Map")
+	bool TravelToNextMap();
+
+	UFUNCTION(BlueprintCallable, Category = "Map")
+	bool TravelToResultMap();
+
+	UFUNCTION(BlueprintCallable, Category = "Map")
+	void ResetMapFlow();
+
 private:
 	IOnlineSessionPtr SessionInterface;
-
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void OnFindSessionsComplete(bool bWasSuccessful);
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
-
 };

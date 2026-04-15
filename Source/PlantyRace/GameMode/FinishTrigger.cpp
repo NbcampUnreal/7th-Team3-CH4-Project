@@ -1,4 +1,5 @@
-﻿#include "GameMode/FinishTrigger.h"
+﻿// FinishTrigger.cpp
+#include "GameMode/FinishTrigger.h"
 #include "Components/SceneComponent.h"
 #include "Components/BoxComponent.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
@@ -64,7 +65,7 @@ void AFinishTrigger::OnFinishTriggerBeginOverlap(
 		return;
 	}
 
-	PRGameMode->RegisterPlayerFinish(PRPlayerState);
+	PRGameMode->RegisterPlayerFinish(PlayerCharacter, PRPlayerState);
 
 	UE_LOG(LogTemp, Warning, TEXT("[FinishTrigger] %s entered finish trigger"),
 		*PRPlayerState->GetPlayerName());
