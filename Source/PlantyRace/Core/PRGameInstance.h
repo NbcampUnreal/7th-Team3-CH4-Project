@@ -34,6 +34,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Session")
 	FString GameMapName;
 
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	TArray<FString> GetFoundSessionNames();
+
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void JoinSessionByIndex(int32 Index);
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Map")
 	TArray<FString> MapNames;
 
