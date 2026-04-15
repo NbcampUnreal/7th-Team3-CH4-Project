@@ -46,6 +46,8 @@ public:
 	void SetRoundNumber(int32 NewRound);
 	void SetRemainingTime(float NewTime);
 
+	//void UpdateHUD();
+
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_WeatherState, BlueprintReadOnly)
 	EWeatherState CurrentWeather;
