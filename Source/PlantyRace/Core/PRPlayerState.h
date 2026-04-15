@@ -16,9 +16,17 @@ public:
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// 순위 계산 점수
-	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Player")
-	float PlayerScore;
+	// 최종 점수
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Score")
+	float TotalScore;
+
+	// 골인 점수
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Score")
+	float RaceScore;
+
+	// 성장 점수
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Score")
+	float GrowthScore;
 
 	// 농작물 성장률
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Player")
@@ -57,13 +65,27 @@ public:
 	bool IsFinished() const { return bFinished; }
 
 	void SetQualified(bool bInQualified) { bQualified = bInQualified; }
+	bool IsQualified() const { return bQualified; }
 
 	void SetEliminated(bool bInEliminated) { bEliminated = bInEliminated; }
+	bool IsEliminated() const { return bEliminated; }
 
 	void SetFinalWinner(bool bInWinner) { bFinalWinner = bInWinner; }
+	bool IsFinalWinner() const { return bFinalWinner; }
 
-	//탈락 처리 요청 클라->서버
+	void SetRaceScore(float InRaceScore) { RaceScore = InRaceScore; }
+	float GetRaceScore() const { return RaceScore; }
+
+	void SetGrowthScore(float InGrowthScore) { GrowthScore = InGrowthScore; }
+	float GetGrowthScore() const { return GrowthScore; }
+
+	void SetTotalScore(float InTotalScore) { TotalScore = InTotalScore; }
+	float GetTotalScore() const { return TotalScore; }
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateGrowthScoreFromRate();
+
+	// 탈락 처리 요청 클라->서버
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RPC")
 	void ServerRequestOvergrow();
-
 };
