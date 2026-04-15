@@ -35,10 +35,10 @@ void APlantyRacePlayerController::BeginPlay()
 
 		if (HUDWidgetClass)
 		{
-			UUserWidget* HUDWidget = CreateWidget<UUserWidget>(this, HUDWidgetClass);
-			if (HUDWidget)
+			HUDWidgetInstance = CreateWidget<UUserWidget>(this, HUDWidgetClass);
+			if (HUDWidgetInstance)
 			{
-				HUDWidget->AddToViewport();
+				HUDWidgetInstance->AddToViewport();
 			}
 		}
 	}
@@ -131,4 +131,9 @@ void APlantyRacePlayerController::UpdateWeatherUI()
 void APlantyRacePlayerController::HandleWeatherChanged()
 {
 	UpdateWeatherUI();
+}
+
+UUserWidget* APlantyRacePlayerController::GetHUDWidget() const
+{
+	return HUDWidgetInstance;
 }
