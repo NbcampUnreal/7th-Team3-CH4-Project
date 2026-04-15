@@ -33,7 +33,7 @@ protected:
 	float MoveRadius = 800.f;
 
 	UPROPERTY(EditAnywhere, Category = "Pig|Move")
-	float MoveInterval = 2.f;
+	float MoveInterval = 4.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Pig|Move")
 	FVector InitialLocation;

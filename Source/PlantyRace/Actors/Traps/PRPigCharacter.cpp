@@ -10,7 +10,7 @@ APRPigCharacter::APRPigCharacter()
 {
     HitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBox"));
     HitBox->SetupAttachment(RootComponent);
-    HitBox->SetBoxExtent(FVector(80.f, 80.f, 60.f));
+    HitBox->SetBoxExtent(FVector(60.f, 60.f, 60.f));
     HitBox->SetGenerateOverlapEvents(true);                             
     HitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);          
     HitBox->SetCollisionObjectType(ECC_WorldDynamic);                   
