@@ -176,9 +176,7 @@ public:
 protected:
 	UFUNCTION()
 	void OnRep_ClothesData();
-
-
-
+	
 	void ApplyClothesFromRepData();
 
 	int32 GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const;
@@ -187,6 +185,28 @@ protected:
 	FClothesRepData ClothesData;
 	void SetMeshByIndex(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options, int32 Index);
 
+public:
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayGrabSound();
+	
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayDivingSound();
+	
+	UFUNCTION()
+	void PlayFootstepSounds(EFootType FootType);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
+	TObjectPtr<class USoundBase> GrabSound;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
+	TObjectPtr<class USoundBase> DiveSound;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
+	TObjectPtr<class USoundBase> RightFootstepSound;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
+	TObjectPtr<class USoundBase>LeftFootstepSound;
+	
 public:
 	UFUNCTION()
 	void RandomizeClothes();
@@ -270,6 +290,26 @@ public:
 	UFUNCTION()
 	void UnlockMovement();
 
+protected:
+	UPROPERTY(Replicated, EditAnywhere, Category = "Pet")
+	TArray<TSubclassOf<class APRPetCharacter>> PetClasses;
+
+	// 현재 펫
+	UPROPERTY(Replicated, VisibleAnywhere, Category = "Pet")
+	TObjectPtr<APRPetCharacter> CurrentPet;
+
+	// 입력
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> ChangePetAction;
+	
+protected:
+	
+	void ChangePetInput();
+	UFUNCTION(Server, Reliable)
+	void ServerChangePet();
+	
+
+	
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Zone")
 	float DefaultMaxWalkSpeed = 0.f;

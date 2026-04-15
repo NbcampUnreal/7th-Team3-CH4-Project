@@ -14,6 +14,13 @@ class PLANTYRACE_API UPlantyRacePlayerAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()
 	
+	
+public:
+	UFUNCTION()
+	void AnimNotify_LeftFootStep();
+
+	UFUNCTION()
+	void AnimNotify_RightFootStep();
 public:
 	virtual void NativeInitializeAnimation() override; // 애니메이션이 생성되면 호출되는 함수.
 

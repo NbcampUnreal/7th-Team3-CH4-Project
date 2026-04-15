@@ -7,6 +7,26 @@
 #include "PlantyRaceCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
+void UPlantyRacePlayerAnimInstance::AnimNotify_LeftFootStep()
+{
+	UE_LOG(LogTemp, Warning, TEXT("LeftFootStep Notify"));
+	Owner = Cast<APlantyRaceCharacter>(TryGetPawnOwner());
+	if (Owner)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Owner Valid"));
+		Owner->PlayFootstepSounds(EFootType::Left);
+	}
+}
+
+void UPlantyRacePlayerAnimInstance::AnimNotify_RightFootStep()
+{
+	Owner = Cast<APlantyRaceCharacter>(TryGetPawnOwner());
+	if (Owner)
+	{
+		Owner->PlayFootstepSounds(EFootType::Right);
+	}
+}
+
 void UPlantyRacePlayerAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
