@@ -7,13 +7,15 @@
 #include "Types/WeatherEffectTypes.h"
 #include "PRGameStateBase.generated.h"
 
+class APRSoundManager;
+
 DECLARE_MULTICAST_DELEGATE(FOnWeatherChanged);
 
 UCLASS()
 class PLANTYRACE_API APRGameStateBase : public AGameStateBase
 {
 	GENERATED_BODY()
-	
+
 public:
 	APRGameStateBase();
 
@@ -31,7 +33,7 @@ public:
 
 	FOnWeatherChanged OnWeatherChanged;
 
-	UPROPERTY(ReplicatedUsing = OnRep_RoundNumber,BlueprintReadOnly, Category = "Round")
+	UPROPERTY(ReplicatedUsing = OnRep_RoundNumber, BlueprintReadOnly, Category = "Round")
 	int32 RoundNumber;
 
 	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, BlueprintReadOnly, Category = "Round")
@@ -46,10 +48,18 @@ public:
 	void SetRoundNumber(int32 NewRound);
 	void SetRemainingTime(float NewTime);
 
+	UFUNCTION(BlueprintCallable, Category = "Audio")
+	void SetSoundManager(APRSoundManager* InSoundManager);
+
+	UFUNCTION(BlueprintPure, Category = "Audio")
+	APRSoundManager* GetSoundManager() const;
+
 	//void UpdateHUD();
 
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_WeatherState, BlueprintReadOnly)
 	EWeatherState CurrentWeather;
 
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Audio")
+	TObjectPtr<APRSoundManager> SoundManager;
 };

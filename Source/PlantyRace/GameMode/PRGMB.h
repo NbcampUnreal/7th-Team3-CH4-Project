@@ -11,6 +11,7 @@ class APlayerController;
 class AController;
 class APlantyRaceCharacter;
 class ACheckPoint;
+class APRSoundManager;
 
 UENUM(BlueprintType)
 enum class EPRMatchRound : uint8
@@ -67,6 +68,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Score")
 	float RaceScoreStep = 10.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio")
+	TSubclassOf<APRSoundManager> SoundManagerClass;
+
+	UPROPERTY()
+	TObjectPtr<APRSoundManager> SpawnedSoundManager;
+
 protected:
 	void CollectSpawnPoints();
 	void SortSpawnPoints();
@@ -75,6 +82,8 @@ protected:
 	void SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players) const;
 	void DisableFinishedPlayer(APlantyRaceCharacter* PlayerCharacter);
 	void SetSpectatorViewForFinishedPlayer(APlantyRaceCharacter* FinishedCharacter);
+	void SpawnSoundManager();
+	void PlayMapBGM();
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Spawn")
