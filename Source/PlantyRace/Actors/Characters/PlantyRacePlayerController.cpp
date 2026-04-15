@@ -33,6 +33,14 @@ void APlantyRacePlayerController::BeginPlay()
 
 		}
 
+		if (HUDWidgetClass)
+		{
+			UUserWidget* HUDWidget = CreateWidget<UUserWidget>(this, HUDWidgetClass);
+			if (HUDWidget)
+			{
+				HUDWidget->AddToViewport();
+			}
+		}
 	}
 
 	CreateWeatherWidget();

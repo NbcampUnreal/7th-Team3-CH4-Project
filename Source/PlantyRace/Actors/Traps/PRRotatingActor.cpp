@@ -21,20 +21,15 @@ APRRotatingActor::APRRotatingActor()
 
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(Scene);
-	MeshComp->SetRelativeLocation(SceneOffset);
 	MeshComp->SetNotifyRigidBodyCollision(true);
 	MeshComp->OnComponentHit.AddDynamic(this, &APRRotatingActor::OnHit);
-
-	DegreesPerSecond = 45.f;
-	StartYaw = 0.f; 
-	ServerStartTime = -1.f;
 }
 
 void APRRotatingActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	StartYaw = GetActorRotation().Yaw;
+	StartAngle = GetCurrentAxisAngle();
 	
 	if (HasAuthority())
 	{
@@ -47,6 +42,18 @@ void APRRotatingActor::BeginPlay()
 		ServerStartTime = GS->GetServerWorldTimeSeconds();
 		bCanRotate = true;
 	}
+}
+
+void APRRotatingActor::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	MeshComp->SetRelativeLocation(MeshOffset);
 }
 
 void APRRotatingActor::Tick(float DeltaTime)
@@ -98,13 +105,12 @@ void APRRotatingActor::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, U
 	{
 		return;
 	}
-	
-	const FVector PivotLocation = GetActorLocation();
-	const FVector HitPoint = Hit.ImpactPoint;
-	
-	FVector RadiusDir = HitPoint - PivotLocation;
-	RadiusDir.Z = 0.f;
 
+	const FVector PivotLocation = GetActorLocation();
+	const FVector MeshLocation = MeshComp->GetComponentLocation();
+	
+	FVector RadiusDir = MeshLocation - PivotLocation;
+	RadiusDir = PlanarDirection(RadiusDir);
 	if (RadiusDir.IsNearlyZero())
 	{
 		return;
@@ -112,37 +118,113 @@ void APRRotatingActor::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, U
 
 	RadiusDir = RadiusDir.GetSafeNormal();
 
-	FVector TangentDir = FVector::ZeroVector;
-	if (DegreesPerSecond >= 0.f)
-	{
-		TangentDir = FVector(-RadiusDir.Y, RadiusDir.X, 0.f);
-	}
-	else
-	{
-		TangentDir = FVector(RadiusDir.Y, -RadiusDir.X, 0.f);
-	}
-
-	FVector ToImpactDir = HitPoint - MeshComp->GetComponentLocation();
-	ToImpactDir.Z = 0.f;
-
-	if (ToImpactDir.IsNearlyZero())
+	FVector TangentDir = TangentDirection(RadiusDir);
+	if (TangentDir.IsNearlyZero())
 	{
 		return;
 	}
 
-	ToImpactDir = ToImpactDir.GetSafeNormal();
+	FVector ToCharacter = HitCharacter->GetActorLocation() - MeshLocation;
+	ToCharacter = PlanarDirection(ToCharacter);
+	if (ToCharacter.IsNearlyZero())
+	{
+		return;
+	}
 
-	const float Dot = FVector::DotProduct(TangentDir, ToImpactDir);
-	
-	if (Dot <= 0.f)
+	ToCharacter = ToCharacter.GetSafeNormal();
+
+	const float SwingDot = FVector::DotProduct(TangentDir, ToCharacter);
+	if (SwingDot >= 0.f)
 	{
 		return;
 	}
 	
 	const FVector LaunchVelocity = (TangentDir * KnockbackPower) + FVector(0.f, 0.f, KnockbackUpPower);
-	const float DownDuration = KnockbackDownDuration;
 
-	KBC->ApplyKnockback(LaunchVelocity, DownDuration);
+	KBC->ApplyKnockback(LaunchVelocity, KnockbackDownDuration);
+}
+
+float APRRotatingActor::GetCurrentAxisAngle() const
+{
+	const FRotator RelativeRot = Scene->GetRelativeRotation();
+
+	switch (RotationAxis)
+	{
+	case ERotationAxis::X:
+		return RelativeRot.Roll;
+	case ERotationAxis::Y:
+		return RelativeRot.Pitch;
+	case ERotationAxis::Z:
+		return RelativeRot.Yaw;
+	default:
+		return 0.f;
+	}
+}
+
+FRotator APRRotatingActor::RotationFromAngle(float Angle) const
+{
+	switch (RotationAxis)
+	{
+	case ERotationAxis::X:
+		return FRotator(0.f, 0.f, Angle);
+	case ERotationAxis::Y:
+		return FRotator(Angle, 0.f, 0.f);
+	case ERotationAxis::Z:
+		return FRotator(0.f, Angle, 0.f);
+	default:
+		return FRotator::ZeroRotator;
+	}
+}
+
+FVector APRRotatingActor::PlanarDirection(const FVector& Source) const
+{
+	FVector Result = Source;
+
+	switch (RotationAxis)
+	{
+	case ERotationAxis::X:
+		Result.X = 0.f;
+		break;
+	case ERotationAxis::Y:
+		Result.Y = 0.f;
+		break;
+	case ERotationAxis::Z:
+		Result.Z = 0.f;
+		break;
+	default:
+		break;
+	}
+
+	return Result;
+}
+
+FVector APRRotatingActor::TangentDirection(const FVector& RadiusDir) const
+{
+	FVector TangentDir = FVector::ZeroVector;
+
+	switch (RotationAxis)
+	{
+	case ERotationAxis::X:
+		TangentDir = FVector(0.f, -RadiusDir.Z, RadiusDir.Y);
+		break;
+	case ERotationAxis::Y:
+		TangentDir = FVector(RadiusDir.Z, 0.f, -RadiusDir.X);
+		break;
+	case ERotationAxis::Z:
+		TangentDir = FVector(-RadiusDir.Y, RadiusDir.X, 0.f);
+		break;
+	default:
+		break;
+	}
+
+	TangentDir = TangentDir.GetSafeNormal();
+
+	if (DegreesPerSecond < 0.f)
+	{
+		TangentDir *= -1.f;
+	}
+
+	return TangentDir;
 }
 
 void APRRotatingActor::UpdateRotationFromServer()
@@ -155,6 +237,6 @@ void APRRotatingActor::UpdateRotationFromServer()
 
 	const float CurrentServerTime = GS->GetServerWorldTimeSeconds();
 	const float ElapsedTime = CurrentServerTime - ServerStartTime;
-	const float NewYaw = StartYaw + ElapsedTime * DegreesPerSecond;
-	Scene->SetRelativeRotation(FRotator(0.f, NewYaw, 0.f));
+	const float NewAngle = StartAngle + ElapsedTime * DegreesPerSecond;
+	Scene->SetRelativeRotation(RotationFromAngle(NewAngle));
 }

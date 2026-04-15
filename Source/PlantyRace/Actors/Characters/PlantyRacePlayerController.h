@@ -51,6 +51,8 @@ public:
 	UFUNCTION()
 	void HandleWeatherChanged();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> HUDWidgetClass;
 protected:
 	UPROPERTY()
 	UPRWeatherWidget* WeatherWidget;
