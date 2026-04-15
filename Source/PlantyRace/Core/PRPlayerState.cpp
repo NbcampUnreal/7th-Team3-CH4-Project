@@ -3,7 +3,9 @@
 
 APRPlayerState::APRPlayerState()
 {
-	PlayerScore = 0.0f;
+	TotalScore = 0.0f;
+	RaceScore = 0.0f;
+	GrowthScore = 0.0f;
 	GrowthRate = 0.0f;
 	bEliminated = false;
 
@@ -17,6 +19,19 @@ void APRPlayerState::ResetRoundState()
 {
 	FinishRank = 0;
 	bFinished = false;
+	bQualified = false;
+	bFinalWinner = false;
+	bEliminated = false;
+
+	RaceScore = 0.0f;
+	GrowthScore = 0.0f;
+	TotalScore = 0.0f;
+}
+
+void APRPlayerState::UpdateGrowthScoreFromRate()
+{
+	GrowthScore = GrowthRate;
+	TotalScore = RaceScore + GrowthScore;
 }
 
 void APRPlayerState::GetLifetimeReplicatedProps(
@@ -24,7 +39,9 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(APRPlayerState, PlayerScore);
+	DOREPLIFETIME(APRPlayerState, TotalScore);
+	DOREPLIFETIME(APRPlayerState, RaceScore);
+	DOREPLIFETIME(APRPlayerState, GrowthScore);
 	DOREPLIFETIME(APRPlayerState, GrowthRate);
 	DOREPLIFETIME(APRPlayerState, bEliminated);
 
@@ -37,4 +54,5 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 void APRPlayerState::ServerRequestOvergrow_Implementation()
 {
 	GrowthRate = 0.0f;
+	UpdateGrowthScoreFromRate();
 }

@@ -51,6 +51,8 @@ void UPRGameInstance::CreateSession()
 	{
 		SessionInterface->CreateSession(0, NAME_GameSession, SessionSettings);
 	}
+
+	SessionSettings.Set(FName("SESSION_NAME"), FString(TEXT("PlantyRace_Room")), EOnlineDataAdvertisementType::ViaOnlineService);
 }
 
 void UPRGameInstance::OnCreateSessionComplete(
@@ -133,4 +135,33 @@ void UPRGameInstance::OnDestroySessionComplete(
 	FName SessionName, bool bWasSuccessful)
 {
 
+}
+
+TArray<FString> UPRGameInstance::GetFoundSessionNames()
+{
+	TArray<FString> Names;
+	if (!SessionSearch.IsValid()) return Names;
+
+	for (auto& Result : SessionSearch->SearchResults)
+	{
+		// 방 이름 가져오기
+		FString SessionName;
+		Result.Session.SessionSettings.Get(
+			FName("SESSION_NAME"), SessionName);
+		Names.Add(SessionName);
+	}
+	return Names;
+}
+
+void UPRGameInstance::JoinSessionByIndex(int32 Index)
+{
+	if (!SessionSearch.IsValid()) return;
+	if (!SessionSearch->SearchResults.IsValidIndex(Index)) return;
+
+	SessionInterface->OnJoinSessionCompleteDelegates.Clear();
+	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(
+		this, &UPRGameInstance::OnJoinSessionComplete);
+
+	SessionInterface->JoinSession(
+		0, NAME_GameSession, SessionSearch->SearchResults[Index]);
 }

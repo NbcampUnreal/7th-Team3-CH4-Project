@@ -148,6 +148,40 @@ ASpawnPoint* APRGMB::GetSpawnPointByIndex(int32 Index) const
 	return nullptr;
 }
 
+float APRGMB::CalculateRaceScoreByRank(int32 Rank) const
+{
+	if (Rank <= 0)
+	{
+		return 0.0f;
+	}
+
+	return FMath::Max(0.0f, FirstPlaceRaceScore - ((Rank - 1) * RaceScoreStep));
+}
+
+void APRGMB::UpdateAllPlayerTotalScores()
+{
+	if (!GameState)
+	{
+		return;
+	}
+
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
+	{
+		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
+		{
+			PRPlayerState->UpdateGrowthScoreFromRate();
+		}
+	}
+}
+
+void APRGMB::SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players) const
+{
+	Players.Sort([](const APRPlayerState& A, const APRPlayerState& B)
+		{
+			return A.GetTotalScore() > B.GetTotalScore();
+		});
+}
+
 void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 {
 	if (!PlayerCharacter)
@@ -276,12 +310,16 @@ void APRGMB::RegisterPlayerFinish(APRPlayerState* PlayerState)
 
 	const int32 NewRank = FinishOrder.Num() + 1;
 	PlayerState->SetFinishRank(NewRank);
+	PlayerState->SetRaceScore(CalculateRaceScoreByRank(NewRank));
+	PlayerState->SetTotalScore(PlayerState->GetRaceScore() + PlayerState->GetGrowthScore());
 
 	FinishOrder.Add(PlayerState);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Finish] %s finished with rank %d"),
+	UE_LOG(LogTemp, Warning, TEXT("[Finish] %s finished with rank %d / RaceScore %.1f / TotalScore %.1f"),
 		*PlayerState->GetPlayerName(),
-		NewRank);
+		NewRank,
+		PlayerState->GetRaceScore(),
+		PlayerState->GetTotalScore());
 
 	PrintFinishOrderLog();
 
@@ -350,9 +388,27 @@ void APRGMB::ProcessRound1Results()
 {
 	QualifiedPlayers.Empty();
 
-	for (int32 i = 0; i < FinishOrder.Num(); ++i)
+	if (!GameState)
 	{
-		if (APRPlayerState* PRPlayerState = FinishOrder[i])
+		return;
+	}
+
+	UpdateAllPlayerTotalScores();
+
+	TArray<TObjectPtr<APRPlayerState>> AllPlayers;
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
+	{
+		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
+		{
+			AllPlayers.Add(PRPlayerState);
+		}
+	}
+
+	SortPlayersByTotalScore(AllPlayers);
+
+	for (int32 i = 0; i < AllPlayers.Num(); ++i)
+	{
+		if (APRPlayerState* PRPlayerState = AllPlayers[i])
 		{
 			const bool bQualified = i < Round1QualifiedCount;
 
@@ -366,54 +422,55 @@ void APRGMB::ProcessRound1Results()
 		}
 	}
 
-	if (GameState)
+	UE_LOG(LogTemp, Warning, TEXT("----- ROUND 1 RESULT (TotalScore) -----"));
+	for (int32 i = 0; i < AllPlayers.Num(); ++i)
 	{
-		for (APlayerState* BasePlayerState : GameState->PlayerArray)
+		if (APRPlayerState* PRPlayerState = AllPlayers[i])
 		{
-			if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
-			{
-				if (!FinishOrder.Contains(PRPlayerState))
-				{
-					PRPlayerState->SetQualified(false);
-					PRPlayerState->SetEliminated(true);
-				}
-			}
-		}
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("----- ROUND 1 RESULT -----"));
-	for (APRPlayerState* QualifiedPlayer : QualifiedPlayers)
-	{
-		if (QualifiedPlayer)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Qualified: %s (Rank %d)"),
-				*QualifiedPlayer->GetPlayerName(),
-				QualifiedPlayer->GetFinishRank());
+			UE_LOG(LogTemp, Warning, TEXT("%d. %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f / Qualified %s"),
+				i + 1,
+				*PRPlayerState->GetPlayerName(),
+				PRPlayerState->GetRaceScore(),
+				PRPlayerState->GetGrowthScore(),
+				PRPlayerState->GetTotalScore(),
+				PRPlayerState->IsQualified() ? TEXT("YES") : TEXT("NO"));
 		}
 	}
 }
 
 void APRGMB::ProcessRound2Results()
 {
-	if (FinishOrder.Num() <= 0)
+	if (!GameState)
 	{
 		return;
 	}
 
+	UpdateAllPlayerTotalScores();
+
+	TArray<TObjectPtr<APRPlayerState>> FinalPlayers;
 	for (APRPlayerState* QualifiedPlayer : QualifiedPlayers)
 	{
 		if (QualifiedPlayer)
 		{
 			QualifiedPlayer->SetFinalWinner(false);
+			FinalPlayers.Add(QualifiedPlayer);
 		}
 	}
 
-	if (APRPlayerState* Winner = FinishOrder[0])
-	{
-		Winner->SetFinalWinner(true);
+	SortPlayersByTotalScore(FinalPlayers);
 
-		UE_LOG(LogTemp, Warning, TEXT("===== FINAL WINNER: %s ====="),
-			*Winner->GetPlayerName());
+	if (FinalPlayers.Num() > 0)
+	{
+		if (APRPlayerState* Winner = FinalPlayers[0])
+		{
+			Winner->SetFinalWinner(true);
+
+			UE_LOG(LogTemp, Warning, TEXT("===== FINAL WINNER: %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f ====="),
+				*Winner->GetPlayerName(),
+				Winner->GetRaceScore(),
+				Winner->GetGrowthScore(),
+				Winner->GetTotalScore());
+		}
 	}
 }
 
@@ -426,7 +483,12 @@ void APRGMB::PrintFinishOrderLog() const
 		const APRPlayerState* PRPlayerState = FinishOrder[i];
 		if (PRPlayerState)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("%d. %s"), i + 1, *PRPlayerState->GetPlayerName());
+			UE_LOG(LogTemp, Warning, TEXT("%d. %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f"),
+				i + 1,
+				*PRPlayerState->GetPlayerName(),
+				PRPlayerState->GetRaceScore(),
+				PRPlayerState->GetGrowthScore(),
+				PRPlayerState->GetTotalScore());
 		}
 	}
 }

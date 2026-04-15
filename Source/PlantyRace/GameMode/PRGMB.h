@@ -60,9 +60,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Round")
 	TArray<TObjectPtr<APRPlayerState>> QualifiedPlayers;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Score")
+	float FirstPlaceRaceScore = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Score")
+	float RaceScoreStep = 10.0f;
+
 protected:
 	void CollectSpawnPoints();
 	void SortSpawnPoints();
+	float CalculateRaceScoreByRank(int32 Rank) const;
+	void UpdateAllPlayerTotalScores();
+	void SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players) const;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Spawn")

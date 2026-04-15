@@ -76,7 +76,8 @@ public:
 	void EndGrab(const FInputActionValue& Value);
 	void Dive(const FInputActionValue& Value);
 	void Landed(const FHitResult& Hit);
-
+	int Growth;
+	int MaxGrowth;
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<class UInputAction> MoveAction;

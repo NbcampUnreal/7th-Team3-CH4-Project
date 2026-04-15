@@ -4,6 +4,10 @@
 #include "Core/PRGameStateBase.h"
 #include "Actors/Characters/PlantyRacePlayerController.h"
 #include "Net/UnrealNetwork.h"
+#include "Actors/Characters/PlantyRaceCharacter.h"
+#include "Components/TextBlock.h"
+#include "Components/ProgressBar.h"
+#include "BluePrint/UserWidget.h"
 
 APRGameStateBase::APRGameStateBase()
 {
@@ -81,3 +85,31 @@ void APRGameStateBase::SetRemainingTime(float NewTime)
     RemainingTime = NewTime;
     OnRep_RemainingTime();
 }
+
+//void APRGameStateBase::UpdateHUD()
+//{
+//    if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
+//    {
+//        APlantyRacePlayerController* PlantyRacePlayerController = Cast<APlantyRacePlayerController>(PlayerController);
+//        {
+//            if (UUserWidget* HUDWidget = PlantyRacePlayerController->GetHUDWidget())
+//            {
+//                if (UTextBlock* TimeText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Time"))))
+//                {
+//                    float RemainingTime = GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle);
+//                    TimeText->SetText(FText::FromString(FString::Printf(TEXT("Time: %.1f"), RemainingTime)));
+//                }
+//
+//                if (UProgressBar* GrowthProgressBar = Cast<UProgressBar>(HUDWidget->GetWidgetFromName(TEXT(" GrowthProgressBar"))))
+//                {
+//                    float Precent = (float)PlantyRaceCharacter->Growth / PlantyRaceCharacter->MaxGrowth;
+//                    GrowthProgressBar->SetPercent(Precent);
+//
+//                if (UTextBlock* LevelIndexText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Level"))))
+//                {
+//                    LevelIndexText->SetText(FText::FromString(FString::Printf(TEXT("round: %d"), RoundNumber + 1)));
+//                }
+//            }
+//        }
+//    }
+//}
