@@ -20,6 +20,8 @@
 #include "GameMode/CheckPoint.h"
 #include "GameMode/SpawnPoint.h"
 #include "Components/PRKnockbackComponent.h"
+#include "Actors/Characters/Pet/PRPetCharacter.h"
+#include "Kismet/KismetMathLibrary.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
@@ -200,6 +202,7 @@ void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 	{
 		if (DiveMontage)
 		AnimInstance->Montage_Play(DiveMontage);
+		Multicast_PlayDivingSound();
 	}
 }
 
@@ -272,7 +275,7 @@ void APlantyRaceCharacter::ServerGrab_Implementation()
 	{
 		MoveComp->DisableMovement();
 	}
-
+	Multicast_PlayGrabSound();
 	Target->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	Target->AttachToComponent(
@@ -332,6 +335,10 @@ void APlantyRaceCharacter::BeginPlay()
 
     PGS->OnWeatherChanged.AddUObject(this, &APlantyRaceCharacter::HandleWeatherChanged);
     HandleWeatherChanged();
+	
+
+
+	
 }
 
 // Called every frame
@@ -399,9 +406,58 @@ void APlantyRaceCharacter::SetMeshByIndex(USkeletalMeshComponent* TargetMesh,
 	TargetMesh->SetLeaderPoseComponent(GetMesh());
 }
 
+void APlantyRaceCharacter::PlayFootstepSounds(EFootType FootType)
+{
+	
+	USoundBase* SoundToPlay = nullptr;
+	FName SocketName = "Root_Socket";
+
+	if (FootType == EFootType::Left)
+	{
+		SoundToPlay = LeftFootstepSound;
+	}
+	else if (FootType == EFootType::Right)
+	{
+		SoundToPlay = RightFootstepSound;
+	}
+
+	if (!SoundToPlay) return;
+
+	const FVector Location = GetMesh()->GetSocketLocation(SocketName);
+	UGameplayStatics::PlaySoundAtLocation(this, SoundToPlay, Location);
+}
+void APlantyRaceCharacter::Multicast_PlayDivingSound_Implementation()
+{
+	if (DiveSound)
+	{
+		FVector SocketLocation = GetMesh()->GetSocketLocation("Hand_RSocket");
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DiveSound,
+			SocketLocation
+		);
+	}
+}
+
+void APlantyRaceCharacter::Multicast_PlayGrabSound_Implementation()
+{
+	if (GrabSound)
+	{
+		FVector SocketLocation = GetMesh()->GetSocketLocation("Hand_RSocket");
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			GrabSound,
+			SocketLocation
+		);
+	}
+}
+
+
+
 void APlantyRaceCharacter::RandomizeClothes()
 {
 	ServerRandomizeClothes();
+	ChangePetInput();
 }
 
 void APlantyRaceCharacter::InitializeModularMeshes()
@@ -462,6 +518,7 @@ void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(APlantyRaceCharacter, GrabTarget);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabbedBy);
     DOREPLIFETIME(ThisClass, bIsKnockedDown);
+	DOREPLIFETIME(APlantyRaceCharacter, CurrentPet);
 }
 
 float APlantyRaceCharacter::GetFloorSlopeAngle() const
@@ -964,6 +1021,64 @@ void APlantyRaceCharacter::UnlockMovement()
         MoveComp->SetMovementMode(MOVE_Falling);
     }
 }
+
+void APlantyRaceCharacter::ChangePetInput()
+{
+	ServerChangePet();
+}
+
+
+
+void APlantyRaceCharacter::ServerChangePet_Implementation()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (!GetWorld() || PetClasses.Num() == 0)
+	{
+		return;
+	}
+
+	if (CurrentPet)
+	{
+		CurrentPet->Destroy();
+		CurrentPet = nullptr;
+	}
+
+	const int32 Index = FMath::RandRange(0, PetClasses.Num() - 1);
+	if (!PetClasses.IsValidIndex(Index) || !PetClasses[Index])
+	{
+		return;
+	}
+
+	const FVector SpawnLocation = GetActorLocation() - GetActorForwardVector() * 150.f;
+	const FRotator SpawnRotation = GetActorRotation();
+
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.Instigator = this;
+
+	APRPetCharacter* NewPet = GetWorld()->SpawnActor<APRPetCharacter>(
+		PetClasses[Index],
+		SpawnLocation,
+		SpawnRotation,
+		Params
+	);
+
+	if (!NewPet)
+	{
+		return;
+	}
+
+	CurrentPet = NewPet;
+
+	NewPet->SetFollowTarget(this);
+	NewPet->SetFollowOffset(FVector(-120.f, 0.f, 0.f));
+}
+
+
 
 void APlantyRaceCharacter::OnRep_InTornado()
 {

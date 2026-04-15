@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actors/Characters/PRPetCharacter.h"
+#include "Actors/Characters/Pet/PRPetCharacter.h"
 #include "PRPotatoPet.generated.h"
 
 UCLASS()
