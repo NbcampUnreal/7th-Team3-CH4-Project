@@ -21,6 +21,7 @@ APRRotatingActor::APRRotatingActor()
 
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(Scene);
+	MeshComp->SetRelativeLocation(MeshOffset);
 	MeshComp->SetNotifyRigidBodyCollision(true);
 	MeshComp->OnComponentHit.AddDynamic(this, &APRRotatingActor::OnHit);
 }
@@ -42,18 +43,6 @@ void APRRotatingActor::BeginPlay()
 		ServerStartTime = GS->GetServerWorldTimeSeconds();
 		bCanRotate = true;
 	}
-}
-
-void APRRotatingActor::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-
-	if (!MeshComp)
-	{
-		return;
-	}
-
-	MeshComp->SetRelativeLocation(MeshOffset);
 }
 
 void APRRotatingActor::Tick(float DeltaTime)
@@ -134,7 +123,7 @@ void APRRotatingActor::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, U
 	ToCharacter = ToCharacter.GetSafeNormal();
 
 	const float SwingDot = FVector::DotProduct(TangentDir, ToCharacter);
-	if (SwingDot >= 0.f)
+	if (SwingDot <= 0.f)
 	{
 		return;
 	}
@@ -208,7 +197,7 @@ FVector APRRotatingActor::TangentDirection(const FVector& RadiusDir) const
 		TangentDir = FVector(0.f, -RadiusDir.Z, RadiusDir.Y);
 		break;
 	case ERotationAxis::Y:
-		TangentDir = FVector(RadiusDir.Z, 0.f, -RadiusDir.X);
+		TangentDir = FVector(-RadiusDir.Z, 0.f, RadiusDir.X);
 		break;
 	case ERotationAxis::Z:
 		TangentDir = FVector(-RadiusDir.Y, RadiusDir.X, 0.f);
