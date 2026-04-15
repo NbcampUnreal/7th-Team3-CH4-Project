@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿// PRGMB.h
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
@@ -72,6 +73,8 @@ protected:
 	float CalculateRaceScoreByRank(int32 Rank) const;
 	void UpdateAllPlayerTotalScores();
 	void SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players) const;
+	void DisableFinishedPlayer(APlantyRaceCharacter* PlayerCharacter);
+	void SetSpectatorViewForFinishedPlayer(APlantyRaceCharacter* FinishedCharacter);
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Spawn")
@@ -87,7 +90,7 @@ public:
 	void StartRound2();
 
 	UFUNCTION(BlueprintCallable, Category = "Round")
-	void RegisterPlayerFinish(APRPlayerState* PlayerState);
+	void RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlayerState* PlayerState);
 
 	UFUNCTION(BlueprintCallable, Category = "Round")
 	void EndCurrentRound();

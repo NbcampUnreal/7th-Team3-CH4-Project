@@ -1,4 +1,5 @@
-﻿#include "GameMode/PRGMB.h"
+﻿// PRGMB.cpp
+#include "GameMode/PRGMB.h"
 #include "GameMode/SpawnPoint.h"
 #include "GameMode/CheckPoint.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
@@ -7,10 +8,15 @@
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Core/PRGameInstance.h"
+#include "EngineUtils.h"
 
 APRGMB::APRGMB()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	bUseSeamlessTravel = true;
 }
 
 void APRGMB::BeginPlay()
@@ -182,6 +188,78 @@ void APRGMB::SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players
 		});
 }
 
+void APRGMB::DisableFinishedPlayer(APlantyRaceCharacter* PlayerCharacter)
+{
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
+	{
+		MoveComp->DisableMovement();
+		MoveComp->StopMovementImmediately();
+	}
+
+	if (AController* Controller = PlayerCharacter->GetController())
+	{
+		if (APlayerController* PC = Cast<APlayerController>(Controller))
+		{
+			PlayerCharacter->DisableInput(PC);
+		}
+	}
+
+	if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	PlayerCharacter->SetActorHiddenInGame(true);
+	PlayerCharacter->SetActorEnableCollision(false);
+}
+
+void APRGMB::SetSpectatorViewForFinishedPlayer(APlantyRaceCharacter* FinishedCharacter)
+{
+	if (!FinishedCharacter)
+	{
+		return;
+	}
+
+	APlayerController* FinishedPC = Cast<APlayerController>(FinishedCharacter->GetController());
+	if (!FinishedPC)
+	{
+		return;
+	}
+
+	for (TActorIterator<APlantyRaceCharacter> It(GetWorld()); It; ++It)
+	{
+		APlantyRaceCharacter* OtherCharacter = *It;
+		if (!OtherCharacter || OtherCharacter == FinishedCharacter)
+		{
+			continue;
+		}
+
+		if (OtherCharacter->IsHidden())
+		{
+			continue;
+		}
+
+		APRPlayerState* OtherPS = OtherCharacter->GetPlayerState<APRPlayerState>();
+		if (!OtherPS)
+		{
+			continue;
+		}
+
+		if (OtherPS->IsFinished())
+		{
+			continue;
+		}
+
+		FinishedPC->SetViewTargetWithBlend(OtherCharacter, 0.5f);
+		return;
+	}
+}
+
 void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 {
 	if (!PlayerCharacter)
@@ -284,9 +362,9 @@ void APRGMB::StartRound2()
 	}
 }
 
-void APRGMB::RegisterPlayerFinish(APRPlayerState* PlayerState)
+void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlayerState* PlayerState)
 {
-	if (!PlayerState)
+	if (!PlayerCharacter || !PlayerState)
 	{
 		return;
 	}
@@ -315,6 +393,9 @@ void APRGMB::RegisterPlayerFinish(APRPlayerState* PlayerState)
 
 	FinishOrder.Add(PlayerState);
 
+	DisableFinishedPlayer(PlayerCharacter);
+	SetSpectatorViewForFinishedPlayer(PlayerCharacter);
+
 	UE_LOG(LogTemp, Warning, TEXT("[Finish] %s finished with rank %d / RaceScore %.1f / TotalScore %.1f"),
 		*PlayerState->GetPlayerName(),
 		NewRank,
@@ -341,17 +422,30 @@ void APRGMB::RegisterPlayerFinish(APRPlayerState* PlayerState)
 
 void APRGMB::EndCurrentRound()
 {
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+
 	if (CurrentRound == EPRMatchRound::Round1)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("========== ROUND 1 END =========="));
 		ProcessRound1Results();
-		StartRound2();
+
+		if (GI)
+		{
+			GI->TravelToMapByIndex(3); // L_Round2
+		}
 	}
 	else if (CurrentRound == EPRMatchRound::Round2)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 END =========="));
 		ProcessRound2Results();
+
 		CurrentRound = EPRMatchRound::Finished;
+
+		if (GI)
+		{
+			GI->TravelToMapByIndex(4); // L_Result
+		}
+
 		UE_LOG(LogTemp, Warning, TEXT("========== MATCH FINISHED =========="));
 	}
 }
