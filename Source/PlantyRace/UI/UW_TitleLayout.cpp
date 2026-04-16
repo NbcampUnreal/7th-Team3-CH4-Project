@@ -6,6 +6,7 @@
 #include "Components/Button.h"
 #include "Components/EditableText.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "Controller/PRTitlePlayerController.h"
 
 UUW_TitleLayout::UUW_TitleLayout(const FObjectInitializer& ObjectInitializer)
@@ -22,12 +23,8 @@ void UUW_TitleLayout::NativeConstruct()
 
 void UUW_TitleLayout::OnEnterButtonClicked()
 {
-	/*APRTitlePlayerController* PlayerController = GetOwningPlayer<APRTitlePlayerController>();
-	if (IsValid(PlayerController) == true)
-	{
-		FText ServerIP = ServerIPEditableText->GetText();
-		PlayerController->JoinServer(ServerIP.ToString());
-	}*/
+	if (EnterButton) EnterButton->SetIsEnabled(false);
+	UGameplayStatics::OpenLevel(GetWorld(), FName("L_Lobby"));
 }
 void UUW_TitleLayout::OnOptionButtonClicked()
 {
