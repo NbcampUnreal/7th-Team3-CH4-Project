@@ -25,6 +25,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Spawn")
 	float SpawnInterval = 3.f;
 
+	UPROPERTY(EditAnywhere, Category = "Spawn")
+	FVector BoxExtent = FVector(80.f, 80.f, 60.f);
+
 	virtual void BeginPlay() override;
 
 	FVector GetRandomPointVolume() const;
