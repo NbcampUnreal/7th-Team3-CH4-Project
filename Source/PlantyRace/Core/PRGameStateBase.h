@@ -54,7 +54,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Audio")
 	APRSoundManager* GetSoundManager() const;
 
-	//void UpdateHUD();
+	void UpdateHUD();
 
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_WeatherState, BlueprintReadOnly)
