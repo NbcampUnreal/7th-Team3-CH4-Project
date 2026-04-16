@@ -426,6 +426,14 @@ void APlantyRaceCharacter::PlayFootstepSounds(EFootType FootType)
 	const FVector Location = GetMesh()->GetSocketLocation(SocketName);
 	UGameplayStatics::PlaySoundAtLocation(this, SoundToPlay, Location);
 }
+void APlantyRaceCharacter::PlayJumpSounds()
+{
+	
+	if (!JumpSound) return;
+	FName SocketName = "Root_Socket";
+	const FVector Location = GetMesh()->GetSocketLocation(SocketName);
+	UGameplayStatics::PlaySoundAtLocation(this, JumpSound, Location);
+}
 void APlantyRaceCharacter::Multicast_PlayDivingSound_Implementation()
 {
 	if (DiveSound)

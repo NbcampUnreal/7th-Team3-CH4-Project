@@ -21,6 +21,10 @@ public:
 
 	UFUNCTION()
 	void AnimNotify_RightFootStep();
+	
+	UFUNCTION()
+	void AnimNotify_JumpSound();
+
 public:
 	virtual void NativeInitializeAnimation() override; // 애니메이션이 생성되면 호출되는 함수.
 
