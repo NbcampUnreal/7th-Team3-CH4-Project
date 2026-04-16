@@ -195,6 +195,8 @@ public:
 	
 	UFUNCTION()
 	void PlayFootstepSounds(EFootType FootType);
+	void PlayJumpSounds();
+	void PlayFootstepSounds();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
 	TObjectPtr<class USoundBase> GrabSound;
@@ -207,6 +209,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
 	TObjectPtr<class USoundBase>LeftFootstepSound;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
+	TObjectPtr<class USoundBase>JumpSound;
 	
 public:
 	UFUNCTION()

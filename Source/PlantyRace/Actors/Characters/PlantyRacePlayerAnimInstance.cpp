@@ -27,6 +27,15 @@ void UPlantyRacePlayerAnimInstance::AnimNotify_RightFootStep()
 	}
 }
 
+void UPlantyRacePlayerAnimInstance::AnimNotify_JumpSound()
+{
+	Owner = Cast<APlantyRaceCharacter>(TryGetPawnOwner());
+	if (Owner)
+	{
+		Owner->PlayJumpSounds();
+	}
+}
+
 void UPlantyRacePlayerAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
