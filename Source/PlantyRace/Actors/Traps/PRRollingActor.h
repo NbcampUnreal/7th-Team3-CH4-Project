@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "PRRollingActor.generated.h"
 
+class USceneComponent;
 class UStaticMeshComponent;
 
 UCLASS()
@@ -15,6 +16,9 @@ public:
 	APRRollingActor();
 
 protected:
+	UPROPERTY(VisibleAnywhere)
+	USceneComponent* SceneRoot;
+
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* MeshComp;
 
@@ -29,6 +33,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Stone")
 	float KnockdownTime = 1.f;
+
+	UPROPERTY(EditAnywhere, Category = "Stone")
+	float LifeSeconds = 5.f;
 
 	virtual void BeginPlay() override;
 
