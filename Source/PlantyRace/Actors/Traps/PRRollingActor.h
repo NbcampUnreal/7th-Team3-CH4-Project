@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "PRRollingActor.generated.h"
 
+class USceneComponent;
 class UStaticMeshComponent;
 
 UCLASS()
@@ -15,6 +16,9 @@ public:
 	APRRollingActor();
 
 protected:
+	UPROPERTY(VisibleAnywhere)
+	USceneComponent* SceneRoot;
+
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* MeshComp;
 
