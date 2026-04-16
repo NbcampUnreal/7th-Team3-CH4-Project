@@ -11,7 +11,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/PRGameInstance.h"
+#include "Core/PRGameStateBase.h"
 #include "EngineUtils.h"
+#include "Audio/PRSoundManager.h"
 
 APRGMB::APRGMB()
 {
@@ -24,6 +26,8 @@ void APRGMB::BeginPlay()
 	Super::BeginPlay();
 
 	CollectSpawnPoints();
+	SpawnSoundManager();
+	PlayMapBGM();
 	StartRound1();
 }
 
@@ -260,6 +264,78 @@ void APRGMB::SetSpectatorViewForFinishedPlayer(APlantyRaceCharacter* FinishedCha
 	}
 }
 
+void APRGMB::SpawnSoundManager()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (!SoundManagerClass)
+	{
+		return;
+	}
+
+	if (IsValid(SpawnedSoundManager))
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+
+	SpawnedSoundManager = GetWorld()->SpawnActor<APRSoundManager>(
+		SoundManagerClass,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParams
+	);
+
+	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
+	if (IsValid(PRGameState))
+	{
+		PRGameState->SetSoundManager(SpawnedSoundManager);
+	}
+}
+
+void APRGMB::PlayMapBGM()
+{
+	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
+	if (!IsValid(PRGameState))
+	{
+		return;
+	}
+
+	APRSoundManager* SoundManager = PRGameState->GetSoundManager();
+	if (!IsValid(SoundManager))
+	{
+		return;
+	}
+
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+
+	if (MapName == TEXT("L_Title"))
+	{
+		SoundManager->PlayBGMByType(EPRBGMType::Title);
+	}
+	else if (MapName == TEXT("L_Lobby"))
+	{
+		SoundManager->PlayBGMByType(EPRBGMType::Lobby);
+	}
+	else if (MapName == TEXT("L_Round1"))
+	{
+		SoundManager->PlayBGMByType(EPRBGMType::Round1);
+	}
+	else if (MapName == TEXT("L_Round2"))
+	{
+		SoundManager->PlayBGMByType(EPRBGMType::Round2);
+	}
+	else if (MapName == TEXT("L_Result"))
+	{
+		SoundManager->PlayBGMByType(EPRBGMType::Result);
+	}
+}
+
 void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 {
 	if (!PlayerCharacter)
@@ -273,6 +349,15 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 			LastCheckpoint->GetRespawnLocation(),
 			LastCheckpoint->GetRespawnRotation()
 		);
+
+		APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+		if (IsValid(GS))
+		{
+			if (APRSoundManager* SM = GS->GetSoundManager())
+			{
+				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
+			}
+		}
 
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to LastCheckpoint"));
 		return;
@@ -289,6 +374,15 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 					(*FoundSpawn)->GetActorRotation()
 				);
 
+				APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+				if (IsValid(GS))
+				{
+					if (APRSoundManager* SM = GS->GetSoundManager())
+					{
+						SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
+					}
+				}
+
 				UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (ControllerMap)"));
 				return;
 			}
@@ -301,6 +395,15 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 			StartSpawn->GetActorLocation(),
 			StartSpawn->GetActorRotation()
 		);
+
+		APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+		if (IsValid(GS))
+		{
+			if (APRSoundManager* SM = GS->GetSoundManager())
+			{
+				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
+			}
+		}
 
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (Character)"));
 		return;
@@ -334,6 +437,15 @@ void APRGMB::StartRound1()
 			PRPlayerState->SetFinalWinner(false);
 		}
 	}
+
+	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
+	if (IsValid(PRGameState))
+	{
+		if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
+		{
+			SoundManager->PlayRoundStartSFX();
+		}
+	}
 }
 
 void APRGMB::StartRound2()
@@ -358,6 +470,15 @@ void APRGMB::StartRound2()
 			const bool bQualified = QualifiedPlayers.Contains(PRPlayerState);
 			PRPlayerState->SetQualified(bQualified);
 			PRPlayerState->SetEliminated(!bQualified);
+		}
+	}
+
+	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
+	if (IsValid(PRGameState))
+	{
+		if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
+		{
+			SoundManager->PlayRoundStartSFX();
 		}
 	}
 }
@@ -440,6 +561,15 @@ void APRGMB::EndCurrentRound()
 		ProcessRound2Results();
 
 		CurrentRound = EPRMatchRound::Finished;
+
+		APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
+		if (IsValid(PRGameState))
+		{
+			if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
+			{
+				SoundManager->PlayVictorySFX();
+			}
+		}
 
 		if (GI)
 		{

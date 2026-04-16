@@ -2,6 +2,8 @@
 #include "Components/BoxComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
+#include "Core/PRGameStateBase.h"
+#include "Audio/PRSoundManager.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
 
 ACheckPoint::ACheckPoint()
@@ -53,6 +55,14 @@ void ACheckPoint::OnCheckpointBeginOverlap(
 	}
 
 	PlayerCharacter->SetLastCheckpoint(this, CheckpointIndex);
+	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
+	if (IsValid(GS))
+	{
+		if (APRSoundManager* SM = GS->GetSoundManager())
+		{
+			SM->PlayCheckPointSFX(GetActorLocation());
+		}
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Checkpoint Overlap: %s entered CheckPoint %d"),
 		*OtherActor->GetName(),

@@ -6,6 +6,8 @@
 #include "Core/PRPlayerState.h"
 #include "GameMode/PRGMB.h"
 #include "GameFramework/GameModeBase.h"
+#include "Core/PRGameStateBase.h"
+#include "Audio/PRSoundManager.h"
 #include "Engine/World.h"
 
 AFinishTrigger::AFinishTrigger()
@@ -63,6 +65,15 @@ void AFinishTrigger::OnFinishTriggerBeginOverlap(
 	if (!PRGameMode)
 	{
 		return;
+	}
+
+	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
+	if (IsValid(GS))
+	{
+		if (APRSoundManager* SM = GS->GetSoundManager())
+		{
+			SM->PlayFinishSFX(GetActorLocation());
+		}
 	}
 
 	PRGameMode->RegisterPlayerFinish(PlayerCharacter, PRPlayerState);

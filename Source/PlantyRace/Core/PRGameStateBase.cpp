@@ -8,12 +8,14 @@
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 #include "BluePrint/UserWidget.h"
+#include "Audio/PRSoundManager.h"
 
 APRGameStateBase::APRGameStateBase()
 {
     CurrentWeather = EWeatherState::None;
     RoundNumber = 1;
     RemainingTime = 0.0f;
+    SoundManager = nullptr;
 }
 
 void APRGameStateBase::OnRep_WeatherState()
@@ -28,6 +30,7 @@ void APRGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     DOREPLIFETIME(ThisClass, CurrentWeather);
     DOREPLIFETIME(ThisClass, RoundNumber);
     DOREPLIFETIME(ThisClass, RemainingTime);
+    DOREPLIFETIME(ThisClass, SoundManager);
 }
 
 void APRGameStateBase::SetWeather(EWeatherState NewWeather)
@@ -84,6 +87,21 @@ void APRGameStateBase::SetRemainingTime(float NewTime)
 {
     RemainingTime = NewTime;
     OnRep_RemainingTime();
+}
+
+void APRGameStateBase::SetSoundManager(APRSoundManager* InSoundManager)
+{
+    if (!HasAuthority())
+    {
+        return;
+    }
+
+    SoundManager = InSoundManager;
+}
+
+APRSoundManager* APRGameStateBase::GetSoundManager() const
+{
+    return SoundManager;
 }
 
 //void APRGameStateBase::UpdateHUD()
