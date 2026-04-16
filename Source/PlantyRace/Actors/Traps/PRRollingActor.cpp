@@ -1,4 +1,5 @@
 ﻿#include "PRRollingActor.h"
+#include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
 #include "Actors/Characters/Components/PRKnockbackComponent.h"
@@ -10,8 +11,11 @@ APRRollingActor::APRRollingActor()
 	bReplicates = true;
 	SetReplicateMovement(true);
 
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
-	SetRootComponent(MeshComp);
+	MeshComp->SetupAttachment(SceneRoot);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComp->SetNotifyRigidBodyCollision(true);
 	MeshComp->SetSimulatePhysics(true);
