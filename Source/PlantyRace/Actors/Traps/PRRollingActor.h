@@ -30,6 +30,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Stone")
 	float KnockdownTime = 1.f;
 
+	UPROPERTY(EditAnywhere, Category = "Stone")
+	float LifeSeconds = 5.f;
+
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
