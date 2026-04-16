@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Core/PRGameStateBase.h"
 #include "PRGMB.generated.h"
 
 class ASpawnPoint;
@@ -117,4 +118,27 @@ protected:
 	void ProcessRound1Results();
 	void ProcessRound2Results();
 	void PrintFinishOrderLog() const;
+
+protected:
+	// 날씨 변경 주기
+	UPROPERTY(EditDefaultsOnly, Category = "Weather")
+	float WeatherChangeInterval = 30.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weather")
+	float WeatherDuration = 15.f;
+
+	// 날씨 변경 타이머 핸들
+	FTimerHandle WeatherChangeTimerHandle;
+	// 날씨 초기화
+	FTimerHandle WeatherResetTimerHandle;
+
+	bool bWeatherActive = false;
+
+	void StartWeatherTimer();
+
+	void ChangeWeatherPeriodically();
+
+	void ResetWeather();
+
+	EWeatherState GetRandomWeather() const;
 };
