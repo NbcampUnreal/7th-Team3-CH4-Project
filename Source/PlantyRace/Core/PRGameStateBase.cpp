@@ -104,8 +104,8 @@ APRSoundManager* APRGameStateBase::GetSoundManager() const
     return SoundManager;
 }
 
-//void APRGameStateBase::UpdateHUD()
-//{
+void APRGameStateBase::UpdateHUD()
+{
 //    if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
 //    {
 //        APlantyRacePlayerController* PlantyRacePlayerController = Cast<APlantyRacePlayerController>(PlayerController);
@@ -130,4 +130,4 @@ APRSoundManager* APRGameStateBase::GetSoundManager() const
 //            }
 //        }
 //    }
-//}
+}
