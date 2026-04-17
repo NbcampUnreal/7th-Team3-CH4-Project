@@ -20,6 +20,7 @@
 #include "GameMode/CheckPoint.h"
 #include "GameMode/SpawnPoint.h"
 #include "Components/PRKnockbackComponent.h"
+#include "Components/PRTornadoComponent.h"
 #include "Actors/Characters/Pet/PRPetCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
 
@@ -72,6 +73,8 @@ APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectIniti
 
     KnockbackComp = CreateDefaultSubobject<UPRKnockbackComponent>(TEXT("KnockbackComp"));
 
+    TornadoComp = CreateDefaultSubobject<UPRTornadoComponent>(TEXT("TornadoComp"));
+
     MouseSensitivity = 1.5f;
 	
 	GrabTarget = nullptr;
@@ -101,10 +104,11 @@ void APlantyRaceCharacter::Look(const FInputActionValue& Value)
 
 void APlantyRaceCharacter::Move(const FInputActionValue& Value)
 {
-    if (bInTornado)
+    if (TornadoComp && TornadoComp->IsInTornado())
     {
         return;
     }
+
 	if (!CanMove())
 	{
 		return;
@@ -346,9 +350,9 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (bInTornado && HasAuthority())
+    if (TornadoComp && TornadoComp->IsInTornado() && HasAuthority())
     {
-        UpdateTornadoMovement(DeltaTime);
+        TornadoComp->UpdateTornadoMovement(DeltaTime);
     }
 }
 
@@ -519,9 +523,6 @@ void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(ThisClass, bIsGrabbed);
-    DOREPLIFETIME(ThisClass, bInTornado);
-    DOREPLIFETIME(ThisClass, TornadoSourceActor);
-    DOREPLIFETIME(ThisClass, CurrentTornadoZone);
 	DOREPLIFETIME(ThisClass, ClothesData);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabTarget);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabbedBy);
@@ -707,7 +708,7 @@ bool APlantyRaceCharacter::CanJumpInternal_Implementation() const
         return Super::CanJumpInternal_Implementation();
     }
 
-    if (bInTornado)
+    if (TornadoComp && TornadoComp->IsInTornado())
     {
         return false;
     }
@@ -747,73 +748,22 @@ void APlantyRaceCharacter::ExitWeatherZone()
 
 void APlantyRaceCharacter::EnterTornado(AActor* InTornadoSource)
 {
-    if (!HasAuthority())
+    if (!TornadoComp)
     {
         return;
     }
 
-    if (bInTornado)
-    {
-        return;
-    }
-
-    if (!IsValid(InTornadoSource))
-    {
-        return;
-    }
-
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!IsValid(MoveComp))
-    {
-        return;
-    }
-
-    AWeatherEffectZone* NewZone = Cast<AWeatherEffectZone>(InTornadoSource);
-    if (!IsValid(NewZone))
-    {
-        return;
-    }
-
-    bInTornado = true;
-    TornadoElapsedTime = 0.0f;
-    TornadoSourceActor = InTornadoSource;
-    MoveComp->Velocity = FVector::ZeroVector;
-    MoveComp->SetMovementMode(MOVE_Falling);
-    CurrentTornadoZone = NewZone;
+    TornadoComp->EnterTornado(InTornadoSource);
 }
 
 void APlantyRaceCharacter::ExitTornado()
 {
-    if (!HasAuthority())
+    if (!TornadoComp)
     {
         return;
     }
 
-    if (!bInTornado)
-    {
-        return;
-    }
-
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!IsValid(MoveComp))
-    {
-        return;
-    }
-
-    bInTornado = false;
-    TornadoElapsedTime = 0.0f;
-    TornadoSourceActor = nullptr;
-    MoveComp->Velocity = FVector::ZeroVector;
-    CurrentTornadoZone = nullptr;
-
-    if (MoveComp->IsMovingOnGround())
-    {
-        MoveComp->SetMovementMode(MOVE_Walking);
-    }
-    else
-    {
-        MoveComp->SetMovementMode(MOVE_Falling);
-    }
+    TornadoComp->ExitTornado();
 }
 
 void APlantyRaceCharacter::PlayFootstepSound(EFootType FootType)
@@ -881,80 +831,14 @@ void APlantyRaceCharacter::SetKnockedDown(bool bValue)
     HandleKnockedDownChanged();
 }
 
-bool APlantyRaceCharacter::IsRisePhase() const
+AWeatherEffectZone* APlantyRaceCharacter::GetCurrentTornadoZone() const
 {
-    return TornadoElapsedTime < TornadoRiseDuration;
-}
-
-bool APlantyRaceCharacter::IsTornadoFinished() const
-{
-    return TornadoElapsedTime >= TornadoTotalDuration;
+    return TornadoComp ? TornadoComp->GetCurrentTornadoZone() : nullptr;
 }
 
 bool APlantyRaceCharacter::IsKnockedDown() const
 {
     return bIsKnockedDown;
-}
-
-FVector APlantyRaceCharacter::GetSuctionVelocity(const FVector& ToCenter) const
-{
-    FVector ToCenterXY = FVector(ToCenter.X, ToCenter.Y, 0.f);
-
-    if (ToCenterXY.IsNearlyZero())
-    {
-        return FVector::ZeroVector;
-    }
-
-    if (FMath::IsNearlyEqual(TornadoMinSuctionDistance, TornadoMaxSuctionDistance))
-    {
-        return FVector::ZeroVector;
-    }
-
-    const FVector SuctionDirection = ToCenterXY.GetSafeNormal();
-    const float DistanceToCenter = ToCenterXY.Size();
-
-    const float ClampedDistance = FMath::Clamp(DistanceToCenter, TornadoMinSuctionDistance, TornadoMaxSuctionDistance);
-    const float Alpha = (ClampedDistance - TornadoMinSuctionDistance) / (TornadoMaxSuctionDistance - TornadoMinSuctionDistance);
-    const float EasedAlpha = FMath::InterpEaseInOut(0.f, 1.f, Alpha, TornadoSuctionEaseExponent);
-    const float SmoothedScale = FMath::Lerp(TornadoMinSuctionScale, TornadoMaxSuctionScale, EasedAlpha);
-    const float FinalSuctionSpeed = TornadoSuctionSpeed * SmoothedScale;
-
-    return SuctionDirection * FinalSuctionSpeed;
-}
-
-FVector APlantyRaceCharacter::GetOrbitVelocity(const FVector& ToCenter) const
-{
-    FVector ToCenterXY = FVector(ToCenter.X, ToCenter.Y, 0.f);
-
-    if (ToCenterXY.IsNearlyZero())
-    {
-        return FVector::ZeroVector;
-    }
-
-    FVector CenterDirection = ToCenterXY.GetSafeNormal();
-    FVector OrbitDirection = FVector(-CenterDirection.Y, CenterDirection.X, 0.f);
-
-    return OrbitDirection * TornadoOrbitSpeed;
-}
-
-FVector APlantyRaceCharacter::GetVerticalVelocity() const
-{
-    FVector VerticalVelocity = FVector::ZeroVector;
-
-    if (IsRisePhase())
-    {
-        VerticalVelocity.Z = TornadoRiseSpeed;
-    }
-    else if (!IsTornadoFinished())
-    {
-        VerticalVelocity.Z = TornadoFallSpeed;
-    }
-    else
-    {
-        VerticalVelocity = FVector::ZeroVector;
-    }
-
-    return VerticalVelocity;
 }
 
 void APlantyRaceCharacter::PlayKnockedDownMontage()
@@ -1086,36 +970,6 @@ void APlantyRaceCharacter::ServerChangePet_Implementation()
 	NewPet->SetFollowOffset(FVector(-120.f, 0.f, 0.f));
 }
 
-
-
-void APlantyRaceCharacter::OnRep_InTornado()
-{
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!IsValid(MoveComp))
-    {
-        return;
-    }
-
-    if (bInTornado)
-    {
-        MoveComp->Velocity = FVector::ZeroVector;
-        MoveComp->SetMovementMode(MOVE_Falling);
-    }
-    else
-    {
-        TornadoElapsedTime = 0.0f;
-
-        if (MoveComp->IsMovingOnGround())
-        {
-            MoveComp->SetMovementMode(MOVE_Walking);
-        }
-        else
-        {
-            MoveComp->SetMovementMode(MOVE_Falling);
-        }
-    }
-}
-
 void APlantyRaceCharacter::OnRep_IsKnockedDown()
 {
     HandleKnockedDownChanged();
@@ -1151,40 +1005,6 @@ void APlantyRaceCharacter::HandleKnockedDownChanged()
     {
         SetActionState(EPlayerActionState::Idle); // AnimMontage 추가시 제거
         PlayGetUpMontage();
-    }
-}
-
-void APlantyRaceCharacter::UpdateTornadoMovement(float DeltaTime)
-{
-    if (!bInTornado || !IsValid(TornadoSourceActor))
-    {
-        return;
-    }
-
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!IsValid(MoveComp))
-    {
-        return;
-    }
-
-    TornadoElapsedTime += DeltaTime;
-
-    FVector ToCenter = TornadoSourceActor->GetActorLocation() - GetActorLocation();
-    FVector NewVelocity = FVector::ZeroVector;
-
-    FVector VerticalVelocity = GetVerticalVelocity();
-    FVector SuctionVelocity = GetSuctionVelocity(ToCenter);
-    FVector OrbitVelocity = GetOrbitVelocity(ToCenter);
-
-    NewVelocity += VerticalVelocity;
-    NewVelocity += SuctionVelocity;
-    NewVelocity += OrbitVelocity;
-
-    MoveComp->Velocity = NewVelocity;
-
-    if (IsTornadoFinished())
-    {
-        ExitTornado();
     }
 }
 
