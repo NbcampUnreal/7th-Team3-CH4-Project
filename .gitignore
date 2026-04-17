@@ -4,8 +4,9 @@ DerivedDataCache/
 Intermediate/
 Saved/
 BuildOutput/
-RunClient1.bat/
-RunDedicatedServer.bat/
+
+RunClient1.bat
+RunDedicatedServer.bat
 
 *.sln
 *.suo
