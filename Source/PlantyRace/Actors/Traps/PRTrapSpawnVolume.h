@@ -20,7 +20,7 @@ protected:
 	UBoxComponent* BoxComp;
 
 	UPROPERTY(EditAnywhere, Category = "Spawn")
-	TSubclassOf<APRRollingActor> RollingActorClass;
+	TArray<TSubclassOf<APRRollingActor>> RollingActorClass;
 
 	UPROPERTY(EditAnywhere, Category = "Spawn")
 	float SpawnInterval = 3.f;

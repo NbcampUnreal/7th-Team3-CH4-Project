@@ -22,7 +22,7 @@ void APRTrapSpawnVolume::BeginPlay()
 		return;
 	}
 
-	if (RollingActorClass == nullptr)
+	if (RollingActorClass.Num() == 0) // 배열이 비어있으면 타이머 실행중지 (오류 방지)
 	{
 		return;
 	}
@@ -33,18 +33,16 @@ void APRTrapSpawnVolume::BeginPlay()
 	}
 
 	UWorld* World = GetWorld();
-	if (World == nullptr)
+	if (World)
 	{
-		return;
+		World->GetTimerManager().SetTimer( 
+			SpawnTimerHandle,
+			this,
+			&APRTrapSpawnVolume::SpawnRollingActor,
+			SpawnInterval,
+			true
+		);
 	}
-
-	World->GetTimerManager().SetTimer(
-		SpawnTimerHandle,
-		this,
-		&APRTrapSpawnVolume::SpawnRollingActor,
-		SpawnInterval,
-		true
-	);
 }
 
 FVector APRTrapSpawnVolume::GetRandomPointVolume() const
@@ -57,6 +55,7 @@ FVector APRTrapSpawnVolume::GetRandomPointVolume() const
 	FVector Origin = BoxComp->GetComponentLocation();
 	FVector Extent = BoxComp->GetScaledBoxExtent();
 
+
 	float RandomX = FMath::RandRange(-Extent.X, Extent.X);
 	float RandomY = FMath::RandRange(-Extent.Y, Extent.Y);
 	float RandomZ = FMath::RandRange(-Extent.Z, Extent.Z);
@@ -68,21 +67,23 @@ FVector APRTrapSpawnVolume::GetRandomPointVolume() const
 
 void APRTrapSpawnVolume::SpawnRollingActor()
 {
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	if (RollingActorClass == nullptr) 
-	{
-		return;
-	}
+	if (!HasAuthority() || RollingActorClass.Num() == 0) return;
 
 	UWorld* World = GetWorld();
 	if (World == nullptr)
 	{
 		return;
 	}
+
+	// 배열에서 랜덤하게 하나 선택
+	int32 RandomIndex = FMath::RandRange(0, RollingActorClass.Num() - 1);
+	TSubclassOf<APRRollingActor> SelectedClass = RollingActorClass[RandomIndex];
+
+	if (SelectedClass == nullptr) 
+	{
+		return;
+	}
+
 
 	FVector SpawnLocation = GetRandomPointVolume();
 	FRotator SpawnRotation = FRotator::ZeroRotator;
@@ -92,7 +93,7 @@ void APRTrapSpawnVolume::SpawnRollingActor()
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 	
 	World->SpawnActor<APRRollingActor>(
-		RollingActorClass,
+		SelectedClass,
 		SpawnLocation,
 		SpawnRotation,
 		SpawnParams
