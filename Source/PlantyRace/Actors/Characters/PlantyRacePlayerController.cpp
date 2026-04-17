@@ -33,13 +33,14 @@ void APlantyRacePlayerController::BeginPlay()
 
 		}
 
-		if (HUDWidgetClass)
+	}
+
+	if (HUDWidgetClass)
+	{
+		HUDWidgetInstance = CreateWidget<UUserWidget>(this, HUDWidgetClass);
+		if (HUDWidgetInstance)
 		{
-			HUDWidgetInstance = CreateWidget<UUserWidget>(this, HUDWidgetClass);
-			if (HUDWidgetInstance)
-			{
-				HUDWidgetInstance->AddToViewport();
-			}
+			HUDWidgetInstance->AddToViewport();
 		}
 	}
 

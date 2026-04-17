@@ -32,6 +32,8 @@ public:
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Player")
 	float GrowthRate;
 
+	float MaxGrowthRate = 1000.0f;
+
 	// 탈락 여부
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Player")
 	bool bEliminated;
