@@ -9,11 +9,9 @@
 
 void UPlantyRacePlayerAnimInstance::AnimNotify_LeftFootStep()
 {
-	UE_LOG(LogTemp, Warning, TEXT("LeftFootStep Notify"));
 	Owner = Cast<APlantyRaceCharacter>(TryGetPawnOwner());
 	if (Owner)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Owner Valid"));
 		Owner->PlayFootstepSounds(EFootType::Left);
 	}
 }
