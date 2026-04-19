@@ -9,6 +9,7 @@
 class UInputMappingContext;
 class UUserWidget;
 class UPRWeatherWidget;
+class UUW_GameResult;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -59,6 +60,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "HUD")
 	UUserWidget* GetHUDWidget() const;
+
+	UFUNCTION(Client, Reliable)
+	void ClientRPCShowGameResultWidget(int32 InRanking);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<UUW_GameResult> GameResultUIClass;
 
 protected:
 	UPROPERTY()
