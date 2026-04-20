@@ -16,6 +16,7 @@ class UCharacterEffectComponent;
 class APRGameStateBase;
 class AWeatherEffectZone;
 class UPRKnockbackComponent;
+class UPRTornadoComponent;
 class UAnimMontage;
 
 UENUM(BlueprintType)
@@ -76,8 +77,7 @@ public:
 	void EndGrab(const FInputActionValue& Value);
 	void Dive(const FInputActionValue& Value);
 	void Landed(const FHitResult& Hit);
-	float Growth;
-	float MaxGrowth;
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<class UInputAction> MoveAction;
@@ -196,7 +196,6 @@ public:
 	UFUNCTION()
 	void PlayFootstepSounds(EFootType FootType);
 	void PlayJumpSounds();
-	void PlayFootstepSounds();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Sound")
 	TObjectPtr<class USoundBase> GrabSound;
@@ -270,19 +269,9 @@ public:
 
 	float GetDefaultJumpZVelocity() const { return DefaultJumpZVelocity; }
 
-	AWeatherEffectZone* GetCurrentTornadoZone() const { return CurrentTornadoZone; }
-
-	bool IsRisePhase() const;
-
-	bool IsTornadoFinished() const;
+	AWeatherEffectZone* GetCurrentTornadoZone() const;
 
 	bool IsKnockedDown() const;
-
-	FVector GetSuctionVelocity(const FVector& ToCenter) const;
-
-	FVector GetOrbitVelocity(const FVector& ToCenter) const;
-
-	FVector GetVerticalVelocity() const;
 
 	UPRKnockbackComponent* GetKnockbackComp() const { return KnockbackComp; }
 
@@ -332,45 +321,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Audio")
 	FName LeftFootstepSocketName;
 
-	UPROPERTY(ReplicatedUsing = OnRep_InTornado)
-	bool bInTornado = false;
-
-	UPROPERTY(VisibleAnywhere, Category = "Tornado")
-	float TornadoElapsedTime = 0.0f;
-
-	UPROPERTY(VisibleAnywhere, Category = "Tornado")
-	float TornadoTotalDuration = 2.5f;
-
-	UPROPERTY(VisibleAnywhere, Category = "Tornado")
-	float TornadoRiseDuration = 0.7f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoRiseSpeed = 500.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoFallSpeed = -250.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoSuctionSpeed = 400.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoOrbitSpeed = 250.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoMinSuctionDistance = 100.f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoMaxSuctionDistance = 650.f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoMinSuctionScale = 0.35f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoMaxSuctionScale = 1.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Tornado")
-	float TornadoSuctionEaseExponent = 2.0f;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grab")
 	float GrabRange = 200.f;
 
@@ -389,16 +339,8 @@ protected:
 	UPROPERTY(Replicated)
 	TObjectPtr<APlantyRaceCharacter> GrabbedBy = nullptr;
 
-	UPROPERTY(Replicated)
-	TObjectPtr<AActor> TornadoSourceActor = nullptr;
-
 	UPROPERTY(ReplicatedUsing = OnRep_IsKnockedDown)
 	bool bIsKnockedDown = false;
-
-	UPROPERTY(Replicated)
-	TObjectPtr<AWeatherEffectZone> CurrentTornadoZone = nullptr;
-
-	FTimerHandle TornadoTimerHandle;
 
 	UPROPERTY(VisibleAnywhere)
 	UCharacterEffectComponent* CharacterEffectComp;
@@ -406,10 +348,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPRKnockbackComponent> KnockbackComp;
 
-	void UpdateTornadoMovement(float DeltaTime);
-
-	UFUNCTION()
-	void OnRep_InTornado();
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPRTornadoComponent> TornadoComp;
 
 	UFUNCTION()
 	void OnRep_IsKnockedDown();

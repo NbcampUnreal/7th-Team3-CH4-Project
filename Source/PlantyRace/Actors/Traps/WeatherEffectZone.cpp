@@ -150,6 +150,7 @@ void AWeatherEffectZone::OnZoneEndOverlap(UPrimitiveComponent* OverlappedCompone
 		{
 			Character->ExitTornado();
 		}
+		return;
 	}
 	
 	Character->ExitWeatherZone();

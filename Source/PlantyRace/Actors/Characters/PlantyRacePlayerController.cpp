@@ -10,6 +10,9 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/PRWeatherWidget.h"
 #include "Core/PRGameStateBase.h"
+#include "UI/UW_GameResult.h"
+#include "Components/TextBlock.h"
+#include "Core/PRPlayerState.h"
 
 
 void APlantyRacePlayerController::BeginPlay()
@@ -33,13 +36,14 @@ void APlantyRacePlayerController::BeginPlay()
 
 		}
 
-		if (HUDWidgetClass)
+	}
+
+	if (HUDWidgetClass)
+	{
+		HUDWidgetInstance = CreateWidget<UUserWidget>(this, HUDWidgetClass);
+		if (HUDWidgetInstance)
 		{
-			HUDWidgetInstance = CreateWidget<UUserWidget>(this, HUDWidgetClass);
-			if (HUDWidgetInstance)
-			{
-				HUDWidgetInstance->AddToViewport();
-			}
+			HUDWidgetInstance->AddToViewport();
 		}
 	}
 
@@ -136,4 +140,31 @@ void APlantyRacePlayerController::HandleWeatherChanged()
 UUserWidget* APlantyRacePlayerController::GetHUDWidget() const
 {
 	return HUDWidgetInstance;
+}
+
+void APlantyRacePlayerController::ClientRPCShowGameResultWidget_Implementation(int32 InRanking)
+{
+	if (IsLocalController() == true)
+	{
+		if (IsValid(GameResultUIClass) == true)
+		{
+			UUW_GameResult* GameResultUI = CreateWidget<UUW_GameResult>(this, GameResultUIClass);
+			if (IsValid(GameResultUI) == true)
+			{
+				GameResultUI->AddToViewport(3);
+
+				FString GameResultString = FString::Printf(TEXT("%02d : "), InRanking); //, Printf(TEXT("%s"), APRPlayerState->TotalScore);
+				GameResultUI->ResultText->SetText(FText::FromString(GameResultString));
+
+				FString RankingString = FString::Printf(TEXT("#%02d"), InRanking);
+				GameResultUI->RankingText->SetText(FText::FromString(RankingString));
+
+				FInputModeUIOnly Mode;
+				Mode.SetWidgetToFocus(GameResultUI->GetCachedWidget());
+				SetInputMode(Mode);
+
+				bShowMouseCursor = true;
+			}
+		}
+	}
 }

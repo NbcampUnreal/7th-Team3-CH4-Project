@@ -12,6 +12,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Core/PRGameInstance.h"
 #include "Core/PRGameStateBase.h"
+#include "TimerManager.h"
 #include "EngineUtils.h"
 #include "Audio/PRSoundManager.h"
 
@@ -33,7 +34,7 @@ void APRGMB::BeginPlay()
 	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
 	if (IsValid(GS) == true)
 	{
-		GS->SetWeather(EWeatherState::Rain);
+		GS->SetWeather(EWeatherState::None);
 
 		StartWeatherTimer();
 	}
@@ -367,6 +368,8 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 			}
 		}
 
+		LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
+
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to LastCheckpoint"));
 		return;
 	}
@@ -391,6 +394,8 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 					}
 				}
 
+				LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
+
 				UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (ControllerMap)"));
 				return;
 			}
@@ -412,6 +417,8 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
 			}
 		}
+
+		LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
 
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (Character)"));
 		return;
@@ -454,6 +461,14 @@ void APRGMB::StartRound1()
 			SoundManager->PlayRoundStartSFX();
 		}
 	}
+	LockAllPlayersMovementForDuration(RoundStartLockDuration);
+	GetWorldTimerManager().SetTimer(
+		RoundTimerHandle,
+		this,
+		&APRGMB::EndCurrentRound,
+		RoundTimeLimit,
+		false
+	);
 }
 
 void APRGMB::StartRound2()
@@ -478,6 +493,16 @@ void APRGMB::StartRound2()
 			const bool bQualified = QualifiedPlayers.Contains(PRPlayerState);
 			PRPlayerState->SetQualified(bQualified);
 			PRPlayerState->SetEliminated(!bQualified);
+
+			AController* Controller = BasePlayerState->GetOwner<AController>();
+			if (Controller)
+			{
+				APlantyRaceCharacter* Character = Cast<APlantyRaceCharacter>(Controller->GetPawn());
+				if (Character && !bQualified)
+				{
+					DisableFinishedPlayer(Character);
+				}
+			}
 		}
 	}
 
@@ -489,6 +514,14 @@ void APRGMB::StartRound2()
 			SoundManager->PlayRoundStartSFX();
 		}
 	}
+	LockAllPlayersMovementForDuration(RoundStartLockDuration);
+	GetWorldTimerManager().SetTimer(
+		RoundTimerHandle,
+		this,
+		&APRGMB::EndCurrentRound,
+		RoundTimeLimit,
+		false
+	);
 }
 
 void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlayerState* PlayerState)
@@ -551,6 +584,7 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 
 void APRGMB::EndCurrentRound()
 {
+	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
 
 	if (CurrentRound == EPRMatchRound::Round1)
@@ -797,4 +831,67 @@ EWeatherState APRGMB::GetRandomWeather() const
 	}
 
 	return EWeatherState::Tornado;
+}
+
+void APRGMB::LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter, float Duration)
+{
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
+	{
+		MoveComp->DisableMovement();
+		MoveComp->StopMovementImmediately();
+	}
+
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(
+		TimerHandle,
+		[PlayerCharacter]()
+		{
+			if (!IsValid(PlayerCharacter))
+			{
+				return;
+			}
+
+			if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
+			{
+				MoveComp->SetMovementMode(MOVE_Walking);
+			}
+		},
+		Duration,
+		false
+	);
+}
+
+void APRGMB::LockAllPlayersMovementForDuration(float Duration)
+{
+	if (!GameState)
+	{
+		return;
+	}
+
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
+	{
+		if (!BasePlayerState)
+		{
+			continue;
+		}
+
+		AController* Controller = Cast<AController>(BasePlayerState->GetOwner());
+		if (!Controller)
+		{
+			continue;
+		}
+
+		APlantyRaceCharacter* PlayerCharacter = Cast<APlantyRaceCharacter>(Controller->GetPawn());
+		if (!PlayerCharacter)
+		{
+			continue;
+		}
+
+		LockPlayerMovementForDuration(PlayerCharacter, Duration);
+	}
 }
