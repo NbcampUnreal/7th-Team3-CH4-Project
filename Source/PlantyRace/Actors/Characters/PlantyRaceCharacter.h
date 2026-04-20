@@ -106,7 +106,7 @@ public:
 	TObjectPtr<class USpringArmComponent> SpringArmComp;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<class UCameraComponent> CameraComp;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mouse")
 	float MouseSensitivity;
 
 	UPROPERTY(EditAnywhere, Category = "Dive")
