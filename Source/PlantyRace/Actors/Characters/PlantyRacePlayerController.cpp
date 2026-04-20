@@ -12,6 +12,7 @@
 #include "Core/PRGameStateBase.h"
 #include "UI/UW_GameResult.h"
 #include "Components/TextBlock.h"
+#include "Core/PRPlayerState.h"
 
 
 void APlantyRacePlayerController::BeginPlay()
@@ -152,7 +153,7 @@ void APlantyRacePlayerController::ClientRPCShowGameResultWidget_Implementation(i
 			{
 				GameResultUI->AddToViewport(3);
 
-				FString GameResultString = FString::Printf(TEXT("%s"), InRanking == 1 ? TEXT("Winner Winner!") : TEXT("Looser..."));
+				FString GameResultString = FString::Printf(TEXT("%02d : "), InRanking); //, Printf(TEXT("%s"), APRPlayerState->TotalScore);
 				GameResultUI->ResultText->SetText(FText::FromString(GameResultString));
 
 				FString RankingString = FString::Printf(TEXT("#%02d"), InRanking);
