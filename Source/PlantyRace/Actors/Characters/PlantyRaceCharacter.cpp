@@ -39,6 +39,7 @@ APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectIniti
     SpringArmComp->TargetArmLength = 800.f;
     SpringArmComp->SetRelativeRotation(FRotator(-55.f, 0.f, 0.f)); // 위에서 아래로
     SpringArmComp->bUsePawnControlRotation = true;
+	SpringArmComp->ProbeChannel = ECC_Camera;
 
     CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
     CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
@@ -307,7 +308,6 @@ void APlantyRaceCharacter::ServerRelease_Implementation()
 void APlantyRaceCharacter::BeginPlay()
 {
     Super::BeginPlay();
-
     InitializeModularMeshes();
     ApplyClothesFromRepData();
 
