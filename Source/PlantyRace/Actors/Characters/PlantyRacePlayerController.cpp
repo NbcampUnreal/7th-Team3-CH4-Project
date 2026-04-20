@@ -19,6 +19,7 @@ void APlantyRacePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if(!IsLocalController()) return;
 	// only spawn touch controls on local player controllers
 	if (SVirtualJoystick::ShouldDisplayTouchInterface() && IsLocalPlayerController())
 	{
