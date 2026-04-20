@@ -493,6 +493,16 @@ void APRGMB::StartRound2()
 			const bool bQualified = QualifiedPlayers.Contains(PRPlayerState);
 			PRPlayerState->SetQualified(bQualified);
 			PRPlayerState->SetEliminated(!bQualified);
+
+			AController* Controller = BasePlayerState->GetOwner<AController>();
+			if (Controller)
+			{
+				APlantyRaceCharacter* Character = Cast<APlantyRaceCharacter>(Controller->GetPawn());
+				if (Character && !bQualified)
+				{
+					DisableFinishedPlayer(Character);
+				}
+			}
 		}
 	}
 
