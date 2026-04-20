@@ -5,7 +5,9 @@
 #include "Actors/Characters/PlantyRaceCharacter.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Types/WeatherEffectTypes.h"
+#include "Core/PRGameStateBase.h"
 
 AWeatherEffectZone::AWeatherEffectZone()
 {
@@ -30,6 +32,9 @@ AWeatherEffectZone::AWeatherEffectZone()
 	ZoneMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ZoneMesh->SetVisibility(false);
 
+	TornadoParticle = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("TornadoParticle"));
+	TornadoParticle->SetupAttachment(Root);
+	TornadoParticle->bAutoActivate = false;
 }
 
 void AWeatherEffectZone::BeginPlay()
@@ -38,16 +43,16 @@ void AWeatherEffectZone::BeginPlay()
 
 	StartLocation = GetActorLocation();
 	
-	APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
-	if (!IsValid(PGS))
+	GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
 	{
 		return;
 	}
 
-	PGS->OnWeatherChanged.AddUObject(this, &AWeatherEffectZone::HandleWeatherChanged);
+	GS->OnWeatherChanged.AddUObject(this, &AWeatherEffectZone::HandleWeatherChanged);
 
-	const bool bShouldActivate = (PGS->GetCurrentWeather() == ZoneWeatherState);
-	UpdateZoneVisibilityByWeather(bShouldActivate);
+	const bool bShouldActivate = (GS->GetCurrentWeather() == ZoneWeatherState);
+	UpdateZoneStateByWeather(bShouldActivate);
 }
 
 void AWeatherEffectZone::Tick(float DeltaTime)
@@ -59,8 +64,7 @@ void AWeatherEffectZone::Tick(float DeltaTime)
 		return;
 	}
 
-	APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
-	if (!IsValid(PGS))
+	if (!IsValid(GS))
 	{
 		return;
 	}
@@ -70,7 +74,7 @@ void AWeatherEffectZone::Tick(float DeltaTime)
 		return;
 	}
 
-	if (PGS->GetCurrentWeather() != EWeatherState::Tornado)
+	if (GS->GetCurrentWeather() != EWeatherState::Tornado)
 	{
 		return;
 	}
@@ -158,28 +162,54 @@ void AWeatherEffectZone::OnZoneEndOverlap(UPrimitiveComponent* OverlappedCompone
 
 void AWeatherEffectZone::HandleWeatherChanged()
 {
-	APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
-	if (!IsValid(PGS))
+	if (!IsValid(GS))
 	{
 		return;
 	}
 
-	const EWeatherState CurrentWeather = PGS->GetCurrentWeather();
+	const EWeatherState CurrentWeather = GS->GetCurrentWeather();
 	const bool bShouldActivate = (CurrentWeather == ZoneWeatherState);
 
-	UpdateZoneVisibilityByWeather(bShouldActivate);
+	UpdateZoneStateByWeather(bShouldActivate);
 }
 
-void AWeatherEffectZone::UpdateZoneVisibilityByWeather(bool bShouldActivate)
+void AWeatherEffectZone::UpdateZoneStateByWeather(bool bShouldActivate)
 {
-	if (!IsValid(BoxComp) || !IsValid(ZoneMesh))
+	UpdateGameplayState(bShouldActivate);
+	UpdateVFXState(bShouldActivate);
+}
+
+void AWeatherEffectZone::UpdateGameplayState(bool bShouldActivate)
+{
+	if (!IsValid(BoxComp))
 	{
 		return;
 	}
 
-	ZoneMesh->SetVisibility(bShouldActivate);
 	BoxComp->SetCollisionEnabled(
 		bShouldActivate ? ECollisionEnabled::QueryOnly :
 		ECollisionEnabled::NoCollision
 	);
+}
+
+void AWeatherEffectZone::UpdateVFXState(bool bShouldActivate)
+{
+	if (IsValid(ZoneMesh))
+	{
+		ZoneMesh->SetVisibility(bShouldActivate);
+	}
+
+	if (IsValid(TornadoParticle))
+	{
+		const bool bTornadoVFX = bShouldActivate && ZoneWeatherState == EWeatherState::Tornado;
+		TornadoParticle->SetVisibility(bTornadoVFX);
+		if (bTornadoVFX)
+		{
+			TornadoParticle->Activate();
+		}
+		else
+		{
+			TornadoParticle->Deactivate();
+		}
+	}
 }

@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Core/PRGameStateBase.h"
 #include "Types/WeatherEffectTypes.h"
 #include "WeatherEffectZone.generated.h"
 
+class USceneComponent;
 class UBoxComponent;
 class UStaticMeshComponent;
+class UParticleSystemComponent;
+class APRGameStateBase;
 
 UCLASS()
 class PLANTYRACE_API AWeatherEffectZone : public AActor
@@ -28,6 +30,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Zone")
 	TObjectPtr<UStaticMeshComponent> ZoneMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "VFX")
+	TObjectPtr<UParticleSystemComponent> TornadoParticle;
+
+	TObjectPtr<APRGameStateBase> GS;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
 	ESurfaceEffectType SurfaceEffectType = ESurfaceEffectType::Mud;
@@ -83,5 +90,8 @@ protected:
 	UFUNCTION()
 	void HandleWeatherChanged();
 
-	void UpdateZoneVisibilityByWeather(bool bShouldActivate);
+	void UpdateZoneStateByWeather(bool bShouldActivate);
+	void UpdateGameplayState(bool bShouldActivate);
+	void UpdateVFXState(bool bShouldActivate);
+	
 };

@@ -22,8 +22,9 @@ public class PlantyRace : ModuleRules
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
 			"AnimGraphRuntime",
-			"NavigationSystem"
-		});
+			"NavigationSystem",
+            "Niagara"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
