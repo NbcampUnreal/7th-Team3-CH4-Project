@@ -141,4 +141,18 @@ protected:
 	void ResetWeather();
 
 	EWeatherState GetRandomWeather() const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Round")
+	float RoundStartLockDuration = 3.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn")
+	float RespawnLockDuration = 2.0f;
+
+	void LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter, float Duration);
+	void LockAllPlayersMovementForDuration(float Duration);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Round")
+	float RoundTimeLimit = 180.0f; 
+
+	FTimerHandle RoundTimerHandle;
 };
