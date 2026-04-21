@@ -3,6 +3,7 @@
 
 #include "UI/UW_TitleLayout.h"
 
+#include "Core/PRGameInstance.h"
 #include "Components/Button.h"
 #include "Components/EditableText.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -23,7 +24,7 @@ void UUW_TitleLayout::NativeConstruct()
 
 void UUW_TitleLayout::OnEnterButtonClicked()
 {
-	if (EnterButton)
+	/*if (EnterButton)
 	{
 		EnterButton->SetIsEnabled(false);
 	}
@@ -47,10 +48,20 @@ void UUW_TitleLayout::OnEnterButtonClicked()
 	if (World->GetNetMode() == NM_Client)
 	{
 		return;
-	}
+	}*/
 
-	World->ServerTravel(TEXT("L_Lobby?listen"));
-}
+	//World->ServerTravel(TEXT("L_Lobby?listen"));
+	APRTitlePlayerController* PlayerController = GetOwningPlayer<APRTitlePlayerController>();
+	if (IsValid(PlayerController) == true)
+	{
+		FText ServerIP = ServerIPEditableText->GetText();
+		UPRGameInstance* MyGI = Cast<UPRGameInstance>(GetGameInstance());
+		if (IsValid(MyGI))
+		{
+			MyGI->ConnectToServer(ServerIP.ToString());
+		}
+	}
+}	
 
 void UUW_TitleLayout::OnOptionButtonClicked()
 {
