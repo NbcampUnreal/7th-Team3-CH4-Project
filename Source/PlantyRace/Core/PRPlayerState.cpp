@@ -13,6 +13,9 @@ APRPlayerState::APRPlayerState()
 	bFinished = false;
 	bQualified = false;
 	bFinalWinner = false;
+
+	bIsReady = false;
+	bIsHost = false;
 }
 
 void APRPlayerState::ResetRoundState()
@@ -49,10 +52,18 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 	DOREPLIFETIME(APRPlayerState, bFinished);
 	DOREPLIFETIME(APRPlayerState, bQualified);
 	DOREPLIFETIME(APRPlayerState, bFinalWinner);
+
+	DOREPLIFETIME(APRPlayerState, bIsReady);
+	DOREPLIFETIME(APRPlayerState, bIsHost);
 }
 
 void APRPlayerState::ServerRequestOvergrow_Implementation()
 {
 	GrowthRate = 0.0f;
 	UpdateGrowthScoreFromRate();
+}
+
+void APRPlayerState::ServerSetReady_Implementation(bool bReady)
+{
+	bIsReady = bReady;
 }

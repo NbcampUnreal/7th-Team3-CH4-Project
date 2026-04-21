@@ -1,0 +1,15 @@
+﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
+
+
+#include "UI/UW_LobbyLayout.h"
+
+void UUW_LobbyLayout::SwitchToMenu(int32 Index)
+{
+	if (LobbySwitcher)
+	{
+		if (Index >= 0 && Index < LobbySwitcher->GetNumWidgets())
+		{
+			LobbySwitcher->SetActiveWidgetIndex(Index);
+		}
+	}
+}
