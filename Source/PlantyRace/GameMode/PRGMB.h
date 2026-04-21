@@ -152,7 +152,27 @@ protected:
 	void LockAllPlayersMovementForDuration(float Duration);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Round")
-	float RoundTimeLimit = 180.0f; 
+	float RoundTimeLimit = 180.0f;
 
 	FTimerHandle RoundTimerHandle;
+
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
+	int32 MinPlayersToStart = 2;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
+	float LobbyStartDelay = 5.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Result")
+	float ResultReturnDelay = 15.0f;
+
+	FTimerHandle LobbyStartTimerHandle;
+	FTimerHandle ResultReturnTimerHandle;
+
+	bool bLobbyStartScheduled = false;
+
+	void HandleMapFlowByCurrentMap();
+	void TryStartLobbyMatch();
+	void StartMatchFromLobby();
+	void ReturnToLobbyFromResult();
 };

@@ -26,16 +26,14 @@ void APRGMB::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CollectSpawnPoints();
 	SpawnSoundManager();
 	PlayMapBGM();
-	StartRound1();
+	HandleMapFlowByCurrentMap();
 
 	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
-	if (IsValid(GS) == true)
+	if (IsValid(GS))
 	{
 		GS->SetWeather(EWeatherState::None);
-
 		StartWeatherTimer();
 	}
 }
@@ -50,6 +48,12 @@ void APRGMB::PostLogin(APlayerController* NewPlayer)
 		{
 			PRPlayerState->ResetRoundState();
 		}
+	}
+
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+	if (MapName == TEXT("L_Lobby"))
+	{
+		TryStartLobbyMatch();
 	}
 }
 
@@ -481,13 +485,14 @@ void APRGMB::StartRound2()
 	ResetRoundData();
 	CurrentRound = EPRMatchRound::Round2;
 
-	UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 START =========="));
-	UE_LOG(LogTemp, Warning, TEXT("Qualified players: %d"), QualifiedPlayers.Num());
-
 	if (!GameState)
 	{
 		return;
 	}
+
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+
+	UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 START =========="));
 
 	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
@@ -495,7 +500,8 @@ void APRGMB::StartRound2()
 		{
 			PRPlayerState->ResetRoundState();
 
-			const bool bQualified = QualifiedPlayers.Contains(PRPlayerState);
+			const bool bQualified = GI ? GI->IsPlayerQualifiedForRound2(PRPlayerState->GetPlayerName()) : false;
+
 			PRPlayerState->SetQualified(bQualified);
 			PRPlayerState->SetEliminated(!bQualified);
 
@@ -519,7 +525,9 @@ void APRGMB::StartRound2()
 			SoundManager->PlayRoundStartSFX();
 		}
 	}
+
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
+
 	GetWorldTimerManager().SetTimer(
 		RoundTimerHandle,
 		this,
@@ -677,6 +685,8 @@ void APRGMB::ProcessRound1Results()
 
 	SortPlayersByTotalScore(AllPlayers);
 
+	TArray<FString> QualifiedNames;
+
 	for (int32 i = 0; i < AllPlayers.Num(); ++i)
 	{
 		if (APRPlayerState* PRPlayerState = AllPlayers[i])
@@ -689,8 +699,14 @@ void APRGMB::ProcessRound1Results()
 			if (bQualified)
 			{
 				QualifiedPlayers.Add(PRPlayerState);
+				QualifiedNames.Add(PRPlayerState->GetPlayerName());
 			}
 		}
+	}
+
+	if (UPRGameInstance* GI = GetGameInstance<UPRGameInstance>())
+	{
+		GI->SaveQualifiedPlayers(QualifiedNames);
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("----- ROUND 1 RESULT (TotalScore) -----"));
@@ -708,7 +724,6 @@ void APRGMB::ProcessRound1Results()
 		}
 	}
 }
-
 void APRGMB::ProcessRound2Results()
 {
 	if (!GameState)
@@ -899,4 +914,102 @@ void APRGMB::LockAllPlayersMovementForDuration(float Duration)
 
 		LockPlayerMovementForDuration(PlayerCharacter, Duration);
 	}
+}
+
+void APRGMB::HandleMapFlowByCurrentMap()
+{
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+
+	if (MapName == TEXT("L_Title"))
+	{
+		return;
+	}
+
+	if (MapName == TEXT("L_Lobby"))
+	{
+		CurrentRound = EPRMatchRound::None;
+		bLobbyStartScheduled = false;
+		TryStartLobbyMatch();
+		return;
+	}
+
+	if (MapName == TEXT("L_Round1"))
+	{
+		CollectSpawnPoints();
+		StartRound1();
+		return;
+	}
+
+	if (MapName == TEXT("L_Round2"))
+	{
+		CollectSpawnPoints();
+		StartRound2();
+		return;
+	}
+
+	if (MapName == TEXT("L_Result"))
+	{
+		CurrentRound = EPRMatchRound::Finished;
+
+		GetWorldTimerManager().SetTimer(
+			ResultReturnTimerHandle,
+			this,
+			&APRGMB::ReturnToLobbyFromResult,
+			ResultReturnDelay,
+			false
+		);
+	}
+}
+
+void APRGMB::TryStartLobbyMatch()
+{
+	if (bLobbyStartScheduled)
+	{
+		return;
+	}
+
+	if (!GameState)
+	{
+		return;
+	}
+
+	const int32 PlayerCount = GameState->PlayerArray.Num();
+	if (PlayerCount < MinPlayersToStart)
+	{
+		return;
+	}
+
+	bLobbyStartScheduled = true;
+
+	GetWorldTimerManager().SetTimer(
+		LobbyStartTimerHandle,
+		this,
+		&APRGMB::StartMatchFromLobby,
+		LobbyStartDelay,
+		false
+	);
+}
+
+void APRGMB::StartMatchFromLobby()
+{
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI)
+	{
+		return;
+	}
+
+	GI->ClearQualifiedPlayers();
+	GI->TravelToMapByIndex(2); // L_Round1
+}
+
+void APRGMB::ReturnToLobbyFromResult()
+{
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI)
+	{
+		return;
+	}
+
+	GI->ClearQualifiedPlayers();
+	GI->TravelToMapByIndex(1); // L_Lobby
 }
