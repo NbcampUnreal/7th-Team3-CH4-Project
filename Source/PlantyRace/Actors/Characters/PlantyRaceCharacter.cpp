@@ -349,13 +349,16 @@ void APlantyRaceCharacter::BeginPlay()
     PGS->OnWeatherChanged.AddUObject(this, &APlantyRaceCharacter::HandleWeatherChanged);
     HandleWeatherChanged();
 	
-	GetWorldTimerManager().SetTimer(
+	if (HasAuthority())
+	{
+		GetWorldTimerManager().SetTimer(
 			SlideCheckTimerHandle,
 			this,
 			&APlantyRaceCharacter::CheckSlidingOnPlatform,
-			0.05f,
+			0.02f,
 			true
 		);
+	}
 
 	
 }
@@ -457,6 +460,10 @@ void APlantyRaceCharacter::ForceReleaseGrab()
 
 void APlantyRaceCharacter::CheckSlidingOnPlatform()
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
 	if (!MoveComp)
 	{
