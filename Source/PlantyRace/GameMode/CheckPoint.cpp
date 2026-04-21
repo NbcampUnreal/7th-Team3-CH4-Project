@@ -60,6 +60,8 @@ void ACheckPoint::OnCheckpointBeginOverlap(
 	}
 
 	PlayerCharacter->SetLastCheckpoint(this, CheckpointIndex);
+	
+	PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
 	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
 	if (IsValid(GS))
