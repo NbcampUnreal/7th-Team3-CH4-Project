@@ -30,9 +30,9 @@ void APRTitlePlayerController::BeginPlay()
 		}
 	}
 }
-
-void APRTitlePlayerController::JoinServer(const FString& InIPAddress)
-{
-	FName NextLevelName = FName(*InIPAddress);
-	UGameplayStatics::OpenLevel(GetWorld(), NextLevelName, true);
-}
+//
+//void APRTitlePlayerController::JoinServer(const FString& InIPAddress)
+//{
+//	FName NextLevelName = FName(*InIPAddress);
+//	UGameplayStatics::OpenLevel(GetWorld(), NextLevelName,true);
+//}

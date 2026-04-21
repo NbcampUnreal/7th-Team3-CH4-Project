@@ -17,18 +17,20 @@ UUW_TitleLayout::UUW_TitleLayout(const FObjectInitializer& ObjectInitializer)
 void UUW_TitleLayout::NativeConstruct()
 {
 	EnterButton.Get()->OnClicked.AddDynamic(this, &ThisClass::OnEnterButtonClicked);
-	OptionButton.Get()->OnClicked.AddDynamic(this, &ThisClass::OnOptionButtonClicked);
 	ExitButton.Get()->OnClicked.AddDynamic(this, &ThisClass::OnExitButtonClicked);
 }
 
 void UUW_TitleLayout::OnEnterButtonClicked()
 {
-	if (EnterButton) EnterButton->SetIsEnabled(false);
-	UGameplayStatics::OpenLevel(GetWorld(), FName("L_Lobby"));
+	APRTitlePlayerController* PlayerController = GetOwningPlayer<APRTitlePlayerController>();
+	if (IsValid(PlayerController) == true)
+	{
+		FText ServerIP = ServerIPEditableText->GetText();
+		PlayerController->JoinServer(ServerIP.ToString());
+	}
 }
-void UUW_TitleLayout::OnOptionButtonClicked()
-{
-}
+
+
 void UUW_TitleLayout::OnExitButtonClicked()
 {
 	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
