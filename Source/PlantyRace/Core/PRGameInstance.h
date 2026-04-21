@@ -55,6 +55,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Map")
 	void ResetMapFlow();
 
+	UPROPERTY(BlueprintReadWrite, Category = "Round")
+	TArray<FString> QualifiedPlayerNames;
+
+	UFUNCTION(BlueprintCallable, Category = "Round")
+	void SaveQualifiedPlayers(const TArray<FString>& InPlayerNames);
+
+	UFUNCTION(BlueprintCallable, Category = "Round")
+	bool IsPlayerQualifiedForRound2(const FString& PlayerName) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Round")
+	void ClearQualifiedPlayers();
+
 private:
 	IOnlineSessionPtr SessionInterface;
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;

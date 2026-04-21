@@ -23,9 +23,35 @@ void UUW_TitleLayout::NativeConstruct()
 
 void UUW_TitleLayout::OnEnterButtonClicked()
 {
-	if (EnterButton) EnterButton->SetIsEnabled(false);
-	UGameplayStatics::OpenLevel(GetWorld(), FName("L_Lobby"));
+	if (EnterButton)
+	{
+		EnterButton->SetIsEnabled(false);
+	}
+
+	APlayerController* PC = GetOwningPlayer();
+	if (PC)
+	{
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+	}
+
+	RemoveFromParent();
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	if (World->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+
+	World->ServerTravel(TEXT("L_Lobby?listen"));
 }
+
 void UUW_TitleLayout::OnOptionButtonClicked()
 {
 }

@@ -215,3 +215,18 @@ void UPRGameInstance::ConnectToServer(const FString& IPAddress)
 		PC->ClientTravel (IPAddress, ETravelType::TRAVEL_Absolute);
 	}
 }
+
+void UPRGameInstance::SaveQualifiedPlayers(const TArray<FString>& InPlayerNames)
+{
+	QualifiedPlayerNames = InPlayerNames;
+}
+
+bool UPRGameInstance::IsPlayerQualifiedForRound2(const FString& PlayerName) const
+{
+	return QualifiedPlayerNames.Contains(PlayerName);
+}
+
+void UPRGameInstance::ClearQualifiedPlayers()
+{
+	QualifiedPlayerNames.Empty();
+}
