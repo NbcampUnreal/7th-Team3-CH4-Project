@@ -358,7 +358,10 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 			LastCheckpoint->GetRespawnLocation(),
 			LastCheckpoint->GetRespawnRotation()
 		);
+		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
+		
+		
 		APRGameStateBase* GS = GetGameState<APRGameStateBase>();
 		if (IsValid(GS))
 		{
@@ -393,7 +396,9 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 						SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
 					}
 				}
+				PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
+				
 				LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
 
 				UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (ControllerMap)"));
@@ -417,8 +422,8 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
 			}
 		}
-
-		LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
+		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
+	
 
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (Character)"));
 		return;
