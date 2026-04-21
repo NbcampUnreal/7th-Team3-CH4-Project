@@ -54,7 +54,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Audio")
 	APRSoundManager* GetSoundManager() const;
-
+	
+	UFUNCTION()
 	void OnRep_WeatherState();
 	void SetWeather(EWeatherState NewWeather);
 	void SetRoundNumber(int32 NewRound);
