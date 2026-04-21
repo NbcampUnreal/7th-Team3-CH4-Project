@@ -20,11 +20,6 @@ public:
 	APRGameStateBase();
 
 	UFUNCTION()
-	void OnRep_WeatherState();
-
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	void SetWeather(EWeatherState NewWeather);
 
 	EWeatherState GetCurrentWeather() const { return CurrentWeather; }
 
@@ -39,14 +34,20 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, BlueprintReadOnly, Category = "Round")
 	float RemainingTime;
 
+	UPROPERTY(ReplicatedUsing = OnRep_AllPlayersReady, BlueprintReadOnly, Category = "Lobby")
+	bool bAllPlayersReady;
+
+	UFUNCTION()
+	void OnRep_AllPlayersReady();
+
+	UFUNCTION(BlueprintCallable, Category = "Lobby")
+	void CheackAllPlayersReady();
+
 	UFUNCTION()
 	void OnRep_RoundNumber();
 
 	UFUNCTION()
 	void OnRep_RemainingTime();
-
-	void SetRoundNumber(int32 NewRound);
-	void SetRemainingTime(float NewTime);
 
 	UFUNCTION(BlueprintCallable, Category = "Audio")
 	void SetSoundManager(APRSoundManager* InSoundManager);
@@ -54,7 +55,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Audio")
 	APRSoundManager* GetSoundManager() const;
 
+	void OnRep_WeatherState();
+	void SetWeather(EWeatherState NewWeather);
+	void SetRoundNumber(int32 NewRound);
+	void SetRemainingTime(float NewTime);
 	void UpdateHUD();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_WeatherState, BlueprintReadOnly)

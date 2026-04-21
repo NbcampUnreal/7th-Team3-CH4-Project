@@ -17,6 +17,7 @@ APRGameStateBase::APRGameStateBase()
     RoundNumber = 1;
     RemainingTime = 0.0f;
     SoundManager = nullptr;
+    bAllPlayersReady = false;
 }
 
 void APRGameStateBase::OnRep_WeatherState()
@@ -32,6 +33,7 @@ void APRGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     DOREPLIFETIME(ThisClass, RoundNumber);
     DOREPLIFETIME(ThisClass, RemainingTime);
     DOREPLIFETIME(ThisClass, SoundManager);
+    DOREPLIFETIME(ThisClass, bAllPlayersReady);
 }
 
 void APRGameStateBase::SetWeather(EWeatherState NewWeather)
@@ -144,3 +146,23 @@ void APRGameStateBase::UpdateHUD()
     }
 }
 
+void APRGameStateBase::OnRep_AllPlayersReady()
+{
+    //게임 시작 버튼 연결
+}
+
+void APRGameStateBase::CheackAllPlayersReady()
+{
+    if (!HasAuthority())return;
+    for (APlayerState* PS : PlayerArray)
+    {
+        APRPlayerState* PRS = Cast<APRPlayerState>(PS);
+        if(PRS && !PRS->bIsReady)
+        {
+            bAllPlayersReady = false;
+            return;
+        }
+    }
+    bAllPlayersReady = true;
+    OnRep_AllPlayersReady();
+}
