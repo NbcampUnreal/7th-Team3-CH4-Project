@@ -929,6 +929,14 @@ void APRGMB::HandleMapFlowByCurrentMap()
 	{
 		CurrentRound = EPRMatchRound::None;
 		bLobbyStartScheduled = false;
+
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			FInputModeGameOnly InputMode;
+			PC->SetInputMode(InputMode);
+			PC->bShowMouseCursor = false;
+		}
+
 		TryStartLobbyMatch();
 		return;
 	}
