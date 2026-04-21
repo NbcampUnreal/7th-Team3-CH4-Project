@@ -61,6 +61,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ResetRoundState();
 
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Lobby")
+	bool bIsReady;
+
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Lobby")
+	bool bIsHost;
+
 	void SetFinishRank(int32 InRank) { FinishRank = InRank; }
 
 	void SetFinished(bool bInFinished) { bFinished = bInFinished; }
@@ -90,4 +96,7 @@ public:
 	// 탈락 처리 요청 클라->서버
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RPC")
 	void ServerRequestOvergrow();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RPC")
+	void ServerSetReady(bool bReady);
 };
