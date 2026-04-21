@@ -124,6 +124,51 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	TObjectPtr<UCurveFloat> DownhillSpeedCurve;
+
+public:
+	UPROPERTY(EditAnywhere, Category="Grab")
+	float GrabHoldDuration = 3.0f;
+
+	UPROPERTY(EditAnywhere, Category="Grab")
+	float GrabberMoveSpeedMultiplier = 0.5f;
+
+	FTimerHandle GrabReleaseTimerHandle;
+
+	bool bGrabPenaltyActive = false;
+	bool bBlockJumpByGrab = false;
+	float CachedWalkSpeedBeforeGrabPenalty = 0.f;
+
+	void ApplyGrabberPenalty();
+	void ClearGrabberPenalty();
+	void StartGrabReleaseTimer();
+	void ForceReleaseGrab();
+
+	
+	UPROPERTY(EditAnywhere, Category="Slide")
+	float SlideStartAngle = 25.f;
+
+	UPROPERTY(EditAnywhere, Category="Slide")
+	float MaxSlideAngle = 55.f;
+
+	UPROPERTY(EditAnywhere, Category="Slide")
+	float MinSlideStrength = 600.f;
+
+	UPROPERTY(EditAnywhere, Category="Slide")
+	float MaxSlideStrength = 2500.f;
+
+	UPROPERTY()
+	float DefaultGroundFriction = 0.f;
+
+	UPROPERTY()
+	float DefaultBrakingDecelerationWalking = 0.f;
+
+	bool bSlidingFrictionApplied = false;
+	
+	FTimerHandle SlideCheckTimerHandle;
+
+	void CheckSlidingOnPlatform();
+	bool IsOnSlidingFloor(FHitResult& OutHit) const;
+	FVector GetSlideDirection(const FVector& FloorNormal) const;
 public:
 	UPROPERTY()
 	TArray<TObjectPtr<USkeletalMeshComponent>> ModularMeshes;

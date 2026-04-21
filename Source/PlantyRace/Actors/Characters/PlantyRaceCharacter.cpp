@@ -23,6 +23,7 @@
 #include "Components/PRTornadoComponent.h"
 #include "Actors/Characters/Pet/PRPetCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "TimerManager.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
@@ -286,6 +287,9 @@ void APlantyRaceCharacter::ServerGrab_Implementation()
 	GrabHoldPoint,
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale
 	);
+	
+	ApplyGrabberPenalty();
+	StartGrabReleaseTimer();
 }
 
 void APlantyRaceCharacter::ServerRelease_Implementation()
@@ -305,6 +309,9 @@ void APlantyRaceCharacter::ServerRelease_Implementation()
 	GrabTarget->bIsGrabbed = false;
 	GrabTarget->GrabbedBy = nullptr;
 	GrabTarget = nullptr;
+	
+	ClearGrabberPenalty();
+	GetWorldTimerManager().ClearTimer(GrabReleaseTimerHandle);
 }
 
 // Called when the game starts or when spawned
@@ -320,8 +327,11 @@ void APlantyRaceCharacter::BeginPlay()
         return;
     }
 
-    DefaultMaxWalkSpeed = MoveComp->MaxWalkSpeed;
-    DefaultJumpZVelocity = MoveComp->JumpZVelocity;
+	DefaultMaxWalkSpeed = MoveComp->MaxWalkSpeed;
+	DefaultJumpZVelocity = MoveComp->JumpZVelocity;
+
+	DefaultGroundFriction = MoveComp->GroundFriction;
+	DefaultBrakingDecelerationWalking = MoveComp->BrakingDecelerationWalking;
 
     if (!IsValid(CharacterEffectComp))
     {
@@ -339,7 +349,13 @@ void APlantyRaceCharacter::BeginPlay()
     PGS->OnWeatherChanged.AddUObject(this, &APlantyRaceCharacter::HandleWeatherChanged);
     HandleWeatherChanged();
 	
-
+	GetWorldTimerManager().SetTimer(
+			SlideCheckTimerHandle,
+			this,
+			&APlantyRaceCharacter::CheckSlidingOnPlatform,
+			0.05f,
+			true
+		);
 
 	
 }
@@ -365,6 +381,178 @@ void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
 	
 	ApplyClothesFromRepData();
 	ForceNetUpdate();
+}
+
+void APlantyRaceCharacter::ApplyGrabberPenalty()
+{
+	if (bGrabPenaltyActive)
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	bGrabPenaltyActive = true;
+	bBlockJumpByGrab = true;
+	CachedWalkSpeedBeforeGrabPenalty = MoveComp->MaxWalkSpeed;
+	MoveComp->MaxWalkSpeed = CachedWalkSpeedBeforeGrabPenalty * GrabberMoveSpeedMultiplier;
+}
+
+void APlantyRaceCharacter::ClearGrabberPenalty()
+{
+	if (!bGrabPenaltyActive)
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->MaxWalkSpeed = CachedWalkSpeedBeforeGrabPenalty;
+	}
+
+	bGrabPenaltyActive = false;
+	bBlockJumpByGrab = false;
+}
+
+void APlantyRaceCharacter::StartGrabReleaseTimer()
+{
+	GetWorldTimerManager().ClearTimer(GrabReleaseTimerHandle);
+
+	GetWorldTimerManager().SetTimer(
+		GrabReleaseTimerHandle,
+		this,
+		&APlantyRaceCharacter::ForceReleaseGrab,
+		GrabHoldDuration,
+		false
+	);
+}
+
+void APlantyRaceCharacter::ForceReleaseGrab()
+{
+	if (!GrabTarget)
+	{
+		ClearGrabberPenalty();
+		return;
+	}
+
+	GrabTarget->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	if (UCharacterMovementComponent* MoveComp = GrabTarget->GetCharacterMovement())
+	{
+		MoveComp->SetMovementMode(MOVE_Walking);
+	}
+
+	GrabTarget->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GrabTarget->bIsGrabbed = false;
+	GrabTarget->GrabbedBy = nullptr;
+	GrabTarget = nullptr;
+
+	ClearGrabberPenalty();
+	GetWorldTimerManager().ClearTimer(GrabReleaseTimerHandle);
+}
+
+void APlantyRaceCharacter::CheckSlidingOnPlatform()
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	if (!MoveComp->IsMovingOnGround())
+	{
+		if (bSlidingFrictionApplied)
+		{
+			MoveComp->GroundFriction = DefaultGroundFriction;
+			MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
+			bSlidingFrictionApplied = false;
+		}
+		return;
+	}
+
+	FHitResult FloorHit;
+	if (!IsOnSlidingFloor(FloorHit))
+	{
+		if (bSlidingFrictionApplied)
+		{
+			MoveComp->GroundFriction = DefaultGroundFriction;
+			MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
+			bSlidingFrictionApplied = false;
+		}
+		return;
+	}
+
+	const FVector FloorNormal = FloorHit.ImpactNormal.GetSafeNormal();
+
+	const float Dot = FVector::DotProduct(FloorNormal, FVector::UpVector);
+	const float ClampedDot = FMath::Clamp(Dot, -1.f, 1.f);
+	const float SlopeAngle = FMath::RadiansToDegrees(FMath::Acos(ClampedDot));
+
+	if (SlopeAngle < SlideStartAngle)
+	{
+		if (bSlidingFrictionApplied)
+		{
+			MoveComp->GroundFriction = DefaultGroundFriction;
+			MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
+			bSlidingFrictionApplied = false;
+		}
+		return;
+	}
+
+	const FVector SlideDirection = GetSlideDirection(FloorNormal);
+	if (SlideDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	const float Alpha = FMath::GetMappedRangeValueClamped(
+		FVector2D(SlideStartAngle, MaxSlideAngle),
+		FVector2D(0.f, 1.f),
+		SlopeAngle
+	);
+
+	const float SlideStrength = FMath::Lerp(MinSlideStrength, MaxSlideStrength, Alpha);
+
+	MoveComp->GroundFriction = 0.f;
+	MoveComp->BrakingDecelerationWalking = 0.f;
+	bSlidingFrictionApplied = true;
+
+	MoveComp->Velocity += SlideDirection * SlideStrength * 0.02f;
+}
+
+
+bool APlantyRaceCharacter::IsOnSlidingFloor(FHitResult& OutHit) const
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return false;
+	}
+
+	const FFindFloorResult& FloorResult = MoveComp->CurrentFloor;
+	if (!FloorResult.IsWalkableFloor())
+	{
+		return false;
+	}
+
+	OutHit = FloorResult.HitResult;
+
+	AActor* FloorActor = OutHit.GetActor();
+	if (!FloorActor)
+	{
+		return false;
+	}
+
+	return FloorActor->ActorHasTag(TEXT("SlidingFloor"));
+}
+
+FVector APlantyRaceCharacter::GetSlideDirection(const FVector& FloorNormal) const
+{
+	return FVector::VectorPlaneProject(FVector::DownVector, FloorNormal).GetSafeNormal();
 }
 
 void APlantyRaceCharacter::OnRep_ClothesData()
@@ -721,6 +909,11 @@ bool APlantyRaceCharacter::CanJumpInternal_Implementation() const
     {
         return false;
     }
+	
+	if (bBlockJumpByGrab)
+	{
+		return false;
+	}
 
     return Super::CanJumpInternal_Implementation();
 }
