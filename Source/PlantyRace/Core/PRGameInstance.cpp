@@ -206,3 +206,12 @@ void UPRGameInstance::DestroySession()
 void UPRGameInstance::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
 }
+
+void UPRGameInstance::ConnectToServer(const FString& IPAddress)
+{
+	APlayerController* PC = GetFirstLocalPlayerController();
+	if (PC)
+	{
+		PC->ClientTravel (IPAddress, ETravelType::TRAVEL_Absolute);
+	}
+}
