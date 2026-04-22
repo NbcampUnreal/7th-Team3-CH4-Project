@@ -25,6 +25,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "TimerManager.h"
 #include "Core/PRGameInstance.h"
+#include "Core/PRPlayerState.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
@@ -154,10 +155,7 @@ void APlantyRaceCharacter::StartGrab(const FInputActionValue& Value)
 
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
-		if (GrabMontage)
-		{
-			AnimInstance->Montage_Play(GrabMontage);
-		}
+		MulticastPlayGrabMontage();
 	}
 }
 
@@ -206,14 +204,14 @@ void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance)
 	{
-		if (DiveMontage)
-		AnimInstance->Montage_Play(DiveMontage);
+		MulticastPlayDiveMontage();
 		Multicast_PlayDivingSound();
 	}
 }
 
 void APlantyRaceCharacter::Ready(const FInputActionValue& Value)
 {
+	ToggleReady();
 }
 
 void APlantyRaceCharacter::Landed(const FHitResult& Hit)
@@ -324,14 +322,8 @@ void APlantyRaceCharacter::BeginPlay()
 {
     Super::BeginPlay();
     InitializeModularMeshes();
-	
-	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
-	if (GI && GI->bHasSavedClothesData)
-	{
-		ClothesData = GI->SavedClothesData;
-	}
-	
 	ApplyClothesFromRepData();
+	
 
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (!IsValid(MoveComp))
@@ -362,10 +354,23 @@ void APlantyRaceCharacter::BeginPlay()
     PGS->OnWeatherChanged.AddUObject(this, &APlantyRaceCharacter::HandleWeatherChanged);
     HandleWeatherChanged();
 	
-	UE_LOG(LogTemp, Warning, TEXT("[Slide] Local:%s Authority:%s NetMode:%d"),
-		IsLocallyControlled() ? TEXT("true") : TEXT("false"),
-		HasAuthority() ? TEXT("true") : TEXT("false"),
-		(int32)GetNetMode());
+	GetWorldTimerManager().SetTimerForNextTick([this]()
+	{
+		if (!IsLocallyControlled())
+		{
+			return;
+		}
+
+		UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+		if (!GI || !GI->bHasSavedClothesData)
+		{
+			return;
+		}
+
+		ServerApplySavedClothes(GI->SavedClothesData);
+
+		UE_LOG(LogTemp, Warning, TEXT("[LOAD REQUEST] Sent saved clothes to server"));
+	});
 	
 }
 
@@ -382,21 +387,32 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
 
 void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
 {
+	
 	ClothesData.PantsIndex = GetRandomValidIndex(PantsOptions);
 	ClothesData.ShirtIndex = GetRandomValidIndex(ShirtOptions);
 	ClothesData.HairIndex = GetRandomValidIndex(HairOptions);
 	ClothesData.GlassIndex = GetRandomValidIndex(GlassOptions);
 	ClothesData.ShoeIndex = GetRandomValidIndex(ShoeOptions);
 	
+	
 	ApplyClothesFromRepData();
 	ForceNetUpdate();
 	
-	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
-	if (GI)
+	ClientCacheClothesData(ClothesData);
+	
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (PS)
 	{
-		GI->SavedClothesData = ClothesData;
-		GI->bHasSavedClothesData = true;
+		PS->SavedClothesData = ClothesData;
+		PS->bHasSavedClothesData = true;
+		UE_LOG(LogTemp, Warning, TEXT("[SAVE FLAG] true"));
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SAVE FLAG] PS NULL"));
+	}
+		
+	
 }
 
 void APlantyRaceCharacter::ApplyGrabberPenalty()
@@ -613,13 +629,9 @@ void APlantyRaceCharacter::ApplyClothesFromRepData()
 
 bool APlantyRaceCharacter::CanRandomizeClothes() const
 {
-	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
-	if (!GI)
-	{
-		return false;
-	}
-
-	return GI->GameMapName == TEXT("L_Lobby");
+	
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+	return MapName == TEXT("L_Lobby");
 }
 
 int32 APlantyRaceCharacter::GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const
@@ -708,10 +720,14 @@ void APlantyRaceCharacter::Multicast_PlayGrabSound_Implementation()
 
 void APlantyRaceCharacter::RandomizeClothes()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[RANDOMIZE] Called"));
+
 	if (!CanRandomizeClothes())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[RANDOMIZE] Blocked"));
 		return;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[RANDOMIZE] Allowed"));
 	ServerRandomizeClothes();
 	ChangePetInput();
 }
@@ -749,6 +765,21 @@ void APlantyRaceCharacter::InitializeModularMeshes()
         ShoeSkeletalMesh->SetLeaderPoseComponent(GetMesh());
         ModularMeshes.Add(ShoeSkeletalMesh);
     }
+}
+
+void APlantyRaceCharacter::LoadClothesFromPlayerState()
+{
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (!PS || !PS->bHasSavedClothesData)
+	{
+		return;
+	}
+
+	ClothesData = PS->SavedClothesData;
+	ApplyClothesFromRepData();
+	ForceNetUpdate();
+
+	UE_LOG(LogTemp, Warning, TEXT("LoadClothesFromPlayerState Applied"));
 }
 
 void APlantyRaceCharacter::SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options)
@@ -942,9 +973,9 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		{
 			EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::RandomizeClothes);
 		}
-    	if (IA_RandomizeClothes)
+    	if (ReadyAction)
     	{
-    		EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::Ready);
+    		EnhancedInput->BindAction(ReadyAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::Ready);
     	}
 	}
 }
@@ -1304,5 +1335,71 @@ bool APlantyRaceCharacter::CanReady() const
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
 	if (!GI) return false;
 
-	return GI->GameMapName == TEXT("L_Lobby");
+	return GI->CurrentMapIndex == 0;
+}
+
+void APlantyRaceCharacter::MulticastPlayDiveMontage_Implementation()
+{
+	if (DiveMontage)
+	{
+		PlayAnimMontage(DiveMontage);
+	}
+}
+
+void APlantyRaceCharacter::ServerApplySavedClothes_Implementation(const FClothesRepData& NewClothes)
+{
+	ClothesData = NewClothes;
+	ApplyClothesFromRepData();
+	ForceNetUpdate();
+
+	UE_LOG(LogTemp, Warning, TEXT("[APPLY] Server applied saved clothes"));
+}
+
+void APlantyRaceCharacter::ClientCacheClothesData_Implementation(const FClothesRepData& NewClothes)
+{
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI)
+	{
+		return;
+	}
+
+	GI->SavedClothesData = NewClothes;
+	GI->bHasSavedClothesData = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[CACHE] Clothes saved to local GameInstance"));
+}
+
+void APlantyRaceCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (PS && PS->bHasSavedClothesData)
+	{
+		ClothesData = PS->SavedClothesData;
+		ApplyClothesFromRepData();
+
+		UE_LOG(LogTemp, Warning, TEXT("OnRep_PlayerState Clothes Applied"));
+	}
+}
+
+void APlantyRaceCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (PS && PS->bHasSavedClothesData)
+	{
+		ClothesData = PS->SavedClothesData;
+		ApplyClothesFromRepData();
+		UE_LOG(LogTemp, Warning, TEXT("PossessedBy Clothes Applied"));
+	}
+}
+
+void APlantyRaceCharacter::MulticastPlayGrabMontage_Implementation()
+{
+	if (GrabMontage)
+	{
+		PlayAnimMontage(GrabMontage);
+	}
 }

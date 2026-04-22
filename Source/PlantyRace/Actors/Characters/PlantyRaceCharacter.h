@@ -230,7 +230,7 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void ServerRandomizeClothes();
-protected:
+public:
 	UFUNCTION()
 	void OnRep_ClothesData();
 	
@@ -273,8 +273,11 @@ public:
 	UFUNCTION()
 	void RandomizeClothes();
 	void InitializeModularMeshes();
+	void LoadClothesFromPlayerState();
 	void SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void OnRep_PlayerState() override;
+	virtual void PossessedBy(AController* NewController) override;
 	float GetFloorSlopeAngle() const;
 	float GetSlopeMoveDirectionDot() const;
 
@@ -346,13 +349,11 @@ protected:
 	UPROPERTY(Replicated, EditAnywhere, Category = "Pet")
 	TArray<TSubclassOf<class APRPetCharacter>> PetClasses;
 
-	// 현재 펫
+	
 	UPROPERTY(Replicated, VisibleAnywhere, Category = "Pet")
 	TObjectPtr<APRPetCharacter> CurrentPet;
 
-	// 입력
-	UPROPERTY(EditAnywhere, Category = "Input")
-	TObjectPtr<UInputAction> ChangePetAction;
+
 	
 protected:
 	
@@ -434,6 +435,7 @@ public:
 	void ToggleReady();
 	bool CanReady() const;
 
+
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	class ASpawnPoint* GetStartSpawnPoint() const { return StartSpawnPoint; }
 
@@ -447,4 +449,17 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Respawn")
 	TObjectPtr<class ASpawnPoint> StartSpawnPoint = nullptr;
+	
+public:
+	UFUNCTION(Client, Reliable)
+	void ClientCacheClothesData(const FClothesRepData& NewClothes);
+
+	UFUNCTION(Server, Reliable)
+	void ServerApplySavedClothes(const FClothesRepData& NewClothes);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastPlayGrabMontage();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastPlayDiveMontage();
 };
