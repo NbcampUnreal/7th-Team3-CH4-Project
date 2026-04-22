@@ -123,16 +123,30 @@ void APRGameStateBase::OnRep_AllPlayersReady()
 
 void APRGameStateBase::CheackAllPlayersReady()
 {
-    if (!HasAuthority())return;
+    if (!HasAuthority())
+    {
+        return;
+    }
+
+    bAllPlayersReady = false;
+
+    if (PlayerArray.Num() <= 0)
+    {
+        OnRep_AllPlayersReady();
+        return;
+    }
+
     for (APlayerState* PS : PlayerArray)
     {
         APRPlayerState* PRS = Cast<APRPlayerState>(PS);
-        if(PRS && !PRS->bIsReady)
+        if (!PRS || !PRS->bIsReady)
         {
             bAllPlayersReady = false;
+            OnRep_AllPlayersReady();
             return;
         }
     }
+
     bAllPlayersReady = true;
     OnRep_AllPlayersReady();
 }

@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿// PRPlayerState.h
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
@@ -64,8 +65,7 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bHasSavedClothesData = false;
-	
-	
+
 	// 라운드 상태 초기화
 	UFUNCTION(BlueprintCallable)
 	void ResetRoundState();
@@ -102,10 +102,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateGrowthScoreFromRate();
 
-	// 탈락 처리 요청 클라->서버
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RPC")
 	void ServerRequestOvergrow();
 
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RPC")
-	void ServerSetReady(bool bReady);
+	UFUNCTION(Server, Reliable)
+	void ServerSetReady(bool bNewReady);
+
+	UFUNCTION(BlueprintCallable)
+	void SetReady(bool bNewReady);
 };

@@ -1,5 +1,8 @@
-﻿#include "PRPlayerState.h"
+﻿// PRPlayerState.cpp
+#include "PRPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "Core/PRGameStateBase.h"
+#include "GameMode/PRGMB.h"
 
 APRPlayerState::APRPlayerState()
 {
@@ -14,7 +17,7 @@ APRPlayerState::APRPlayerState()
 	bQualified = false;
 	bFinalWinner = false;
 
-	bIsReady = true;
+	bIsReady = false;
 	bIsHost = false;
 }
 
@@ -55,7 +58,7 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 
 	DOREPLIFETIME(APRPlayerState, bIsReady);
 	DOREPLIFETIME(APRPlayerState, bIsHost);
-	
+
 	DOREPLIFETIME(APRPlayerState, SavedClothesData);
 	DOREPLIFETIME(APRPlayerState, bHasSavedClothesData);
 }
@@ -63,7 +66,7 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 void APRPlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);
-	
+
 	APRPlayerState* NewPS = Cast<APRPlayerState>(PlayerState);
 	if (!NewPS)
 	{
@@ -80,7 +83,57 @@ void APRPlayerState::ServerRequestOvergrow_Implementation()
 	UpdateGrowthScoreFromRate();
 }
 
-void APRPlayerState::ServerSetReady_Implementation(bool bReady)
+void APRPlayerState::SetReady(bool bNewReady)
 {
-	bIsReady = bReady;
+	if (HasAuthority())
+	{
+		bIsReady = bNewReady;
+
+		APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
+		if (IsValid(GS))
+		{
+			GS->CheackAllPlayersReady();
+		}
+
+		APRGMB* GM = GetWorld()->GetAuthGameMode<APRGMB>();
+		if (IsValid(GM))
+		{
+			if (GS && GS->bAllPlayersReady)
+			{
+				GM->TryStartLobbyMatch();
+			}
+			else
+			{
+				GM->CancelLobbyMatchStart();
+			}
+		}
+	}
+	else
+	{
+		ServerSetReady(bNewReady);
+	}
+}
+
+void APRPlayerState::ServerSetReady_Implementation(bool bNewReady)
+{
+	bIsReady = bNewReady;
+
+	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
+	if (IsValid(GS))
+	{
+		GS->CheackAllPlayersReady();
+	}
+
+	APRGMB* GM = GetWorld()->GetAuthGameMode<APRGMB>();
+	if (IsValid(GM))
+	{
+		if (GS && GS->bAllPlayersReady)
+		{
+			GM->TryStartLobbyMatch();
+		}
+		else
+		{
+			GM->CancelLobbyMatchStart();
+		}
+	}
 }
