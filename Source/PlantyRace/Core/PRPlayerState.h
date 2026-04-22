@@ -71,7 +71,7 @@ public:
 	void ResetRoundState();
 
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Lobby")
-	bool bIsReady;
+	bool bIsReady = false;
 
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Lobby")
 	bool bIsHost;

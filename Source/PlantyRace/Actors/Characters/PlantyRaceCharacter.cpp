@@ -153,10 +153,7 @@ void APlantyRaceCharacter::StartGrab(const FInputActionValue& Value)
 
 	ServerGrab();
 
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		MulticastPlayGrabMontage();
-	}
+	
 }
 
 void APlantyRaceCharacter::EndGrab(const FInputActionValue& Value)
@@ -172,41 +169,7 @@ void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 	{
 		return;
 	}
-
-	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-	if (!MoveComp)
-	{
-		return;
-	}
-
-	SetActionState(EPlayerActionState::Dive);
-
-	FVector HorizontalVelocity = GetVelocity();
-	HorizontalVelocity.Z = 0.f;
-
-	FVector DiveDirection = GetActorForwardVector();
-	DiveDirection.Z = 0.f;
-	DiveDirection.Normalize();
-
-	const float DiveBoost = 400.f;
-	const float MaxDiveSpeed = 700.f;
-
-	const float SpeedAlongDive = FVector::DotProduct(HorizontalVelocity, DiveDirection);
-
-	const float FinalSpeedAlongDive =
-		FMath::Clamp(SpeedAlongDive + DiveBoost, 0.f, MaxDiveSpeed);
-
-	FVector NewVelocity = DiveDirection * FinalSpeedAlongDive;
-	float CurrentZ = GetVelocity().Z;
-	NewVelocity.Z = CurrentZ + 170.f;
-
-	LaunchCharacter(NewVelocity, true, true);
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance)
-	{
-		MulticastPlayDiveMontage();
-		Multicast_PlayDivingSound();
-	}
+	ServerDive();	
 }
 
 void APlantyRaceCharacter::Ready(const FInputActionValue& Value)
@@ -284,6 +247,10 @@ void APlantyRaceCharacter::ServerGrab_Implementation()
 		MoveComp->DisableMovement();
 	}
 	Multicast_PlayGrabSound();
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		MulticastPlayGrabMontage();
+	}
 	Target->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	Target->AttachToComponent(
@@ -293,6 +260,16 @@ void APlantyRaceCharacter::ServerGrab_Implementation()
 	
 	ApplyGrabberPenalty();
 	StartGrabReleaseTimer();
+	
+	bCanGrab = false;
+	GetWorldTimerManager().ClearTimer(GrabCooldownTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		GrabCooldownTimerHandle,
+		this,
+		&APlantyRaceCharacter::ResetGrabCooldown,
+		GrabCooldown,
+		false
+	);
 }
 
 void APlantyRaceCharacter::ServerRelease_Implementation()
@@ -803,6 +780,7 @@ void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(APlantyRaceCharacter, GrabbedBy);
     DOREPLIFETIME(ThisClass, bIsKnockedDown);
 	DOREPLIFETIME(APlantyRaceCharacter, CurrentPet);
+	DOREPLIFETIME(APlantyRaceCharacter, CurrentActionState);
 }
 
 float APlantyRaceCharacter::GetFloorSlopeAngle() const
@@ -911,8 +889,10 @@ bool APlantyRaceCharacter::CanJumpAction() const
 
 bool APlantyRaceCharacter::CanGrabAction() const
 {
-	return CurrentActionState == EPlayerActionState::Idle
-		|| CurrentActionState == EPlayerActionState::Jump;
+	return bCanGrab
+		&& !bIsGrabbed
+		&& CurrentActionState == EPlayerActionState::Idle
+		|| (bCanGrab && !bIsGrabbed && CurrentActionState == EPlayerActionState::Jump);
 }
 
 bool APlantyRaceCharacter::CanDiveAction() const
@@ -1352,6 +1332,11 @@ bool APlantyRaceCharacter::IsReady() const
 	return PS->bIsReady;
 }
 
+void APlantyRaceCharacter::ResetGrabCooldown()
+{
+	bCanGrab = true;
+}
+
 void APlantyRaceCharacter::MulticastPlayDiveMontage_Implementation()
 {
 	if (DiveMontage)
@@ -1411,4 +1396,44 @@ void APlantyRaceCharacter::MulticastPlayGrabMontage_Implementation()
 	{
 		PlayAnimMontage(GrabMontage);
 	}
+}
+
+void APlantyRaceCharacter::ServerDive_Implementation()
+{
+	if (!CanDiveAction())
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	SetActionState(EPlayerActionState::Dive);
+
+	FVector HorizontalVelocity = GetVelocity();
+	HorizontalVelocity.Z = 0.f;
+
+	FVector DiveDirection = GetActorForwardVector();
+	DiveDirection.Z = 0.f;
+	DiveDirection.Normalize();
+
+	const float DiveBoost = 400.f;
+	const float MaxDiveSpeed = 700.f;
+
+	const float SpeedAlongDive = FVector::DotProduct(HorizontalVelocity, DiveDirection);
+
+	const float FinalSpeedAlongDive =
+		FMath::Clamp(SpeedAlongDive + DiveBoost, 0.f, MaxDiveSpeed);
+
+	FVector NewVelocity = DiveDirection * FinalSpeedAlongDive;
+	float CurrentZ = GetVelocity().Z;
+	NewVelocity.Z = CurrentZ + 170.f;
+
+	LaunchCharacter(NewVelocity, true, true);
+
+	MulticastPlayDiveMontage();
+	Multicast_PlayDivingSound();
 }

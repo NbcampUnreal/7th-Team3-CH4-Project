@@ -293,7 +293,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerActionState CurrentActionState = EPlayerActionState::Idle;
 
 	void UpdateSlopeSpeed();
@@ -462,4 +462,17 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastPlayDiveMontage();
 	
+	
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab")
+	float GrabCooldown = 1.0f;
+
+	bool bCanGrab = true;
+
+	FTimerHandle GrabCooldownTimerHandle;
+
+	void ResetGrabCooldown();
+
+	UFUNCTION(Server, Reliable)
+	void ServerDive();
 };
