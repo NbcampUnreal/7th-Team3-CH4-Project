@@ -156,7 +156,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Round")
 	float RoundTimeLimit = 180.0f;
 
-
+	FTimerHandle RoundTimerHandle;
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
 	int32 MinPlayersToStart = 2;
