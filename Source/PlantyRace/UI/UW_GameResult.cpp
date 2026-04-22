@@ -23,11 +23,11 @@ void UUW_GameResult::NativeConstruct()
 
 void UUW_GameResult::OnReturnToTitleButtonClicked()
 {
-	UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("Title")), true);
+	UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("L_Title")), true);
 
 }
 
 void UUW_GameResult::OnReturnToRoomButtonClicked()
 {
-	//UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("Title")), true);
+	UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("L_Lobby")), true);
 }

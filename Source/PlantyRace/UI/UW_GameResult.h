@@ -26,11 +26,6 @@ private:
 	void OnReturnToRoomButtonClicked();
 
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (BindWidget))
-	TObjectPtr<UTextBlock> ResultText;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (BindWidget))
-	TObjectPtr<UTextBlock> RankingText;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (BindWidget))
 	TObjectPtr<UButton> ReturnToTitleButton;

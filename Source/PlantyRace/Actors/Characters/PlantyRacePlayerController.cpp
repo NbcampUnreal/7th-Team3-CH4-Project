@@ -162,11 +162,11 @@ void APlantyRacePlayerController::ClientRPCShowGameResultWidget_Implementation(i
 			{
 				GameResultUI->AddToViewport(3);
 
-				FString GameResultString = FString::Printf(TEXT("%02d : "), InRanking); //, Printf(TEXT("%s"), APRPlayerState->TotalScore);
-				GameResultUI->ResultText->SetText(FText::FromString(GameResultString));
+				//FString GameResultString = FString::Printf(TEXT("%02d : "), InRanking); //, Printf(TEXT("%s"), APRPlayerState->TotalScore);
+				//GameResultUI->ResultText->SetText(FText::FromString(GameResultString));
 
-				FString RankingString = FString::Printf(TEXT("#%02d"), InRanking);
-				GameResultUI->RankingText->SetText(FText::FromString(RankingString));
+				//FString RankingString = FString::Printf(TEXT("#%02d"), InRanking);
+				//GameResultUI->RankingText->SetText(FText::FromString(RankingString));
 
 				FInputModeUIOnly Mode;
 				Mode.SetWidgetToFocus(GameResultUI->GetCachedWidget());
