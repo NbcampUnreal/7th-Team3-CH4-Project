@@ -76,6 +76,7 @@ public:
 	void StartGrab(const FInputActionValue& Value);
 	void EndGrab(const FInputActionValue& Value);
 	void Dive(const FInputActionValue& Value);
+	void Ready(const FInputActionValue& Value);
 	void Landed(const FHitResult& Hit);
 
 public:
@@ -96,6 +97,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> IA_RandomizeClothes;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ReadyAction;
 
 
 public:
@@ -125,6 +129,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	TObjectPtr<UCurveFloat> DownhillSpeedCurve;
 
+	UPROPERTY(Replicated)
+	bool bIsReady = false;
+	
 public:
 	UPROPERTY(EditAnywhere, Category="Grab")
 	float GrabHoldDuration = 3.0f;
@@ -422,6 +429,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	void SetStartSpawnPoint(class ASpawnPoint* NewSpawnPoint);
+	UFUNCTION(Server, Reliable)
+	void ServerSetReady(bool bNewReady);
+	void ToggleReady();
+	bool CanReady() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	class ASpawnPoint* GetStartSpawnPoint() const { return StartSpawnPoint; }

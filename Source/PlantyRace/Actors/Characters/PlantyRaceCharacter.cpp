@@ -212,6 +212,10 @@ void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 	}
 }
 
+void APlantyRaceCharacter::Ready(const FInputActionValue& Value)
+{
+}
+
 void APlantyRaceCharacter::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
@@ -938,6 +942,10 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		{
 			EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::RandomizeClothes);
 		}
+    	if (IA_RandomizeClothes)
+    	{
+    		EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::Ready);
+    	}
 	}
 }
 
@@ -1277,4 +1285,24 @@ void APlantyRaceCharacter::SetStartSpawnPoint(ASpawnPoint* NewSpawnPoint)
     }
 
     StartSpawnPoint = NewSpawnPoint;
+}
+
+void APlantyRaceCharacter::ServerSetReady_Implementation(bool bNewReady)
+{
+	bIsReady = bNewReady;
+}
+
+void APlantyRaceCharacter::ToggleReady()
+{
+	if (!CanReady()) return;
+
+	ServerSetReady(!bIsReady);
+}
+
+bool APlantyRaceCharacter::CanReady() const
+{
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI) return false;
+
+	return GI->GameMapName == TEXT("L_Lobby");
 }
