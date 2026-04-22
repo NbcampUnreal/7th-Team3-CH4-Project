@@ -36,6 +36,8 @@ void APRGMB::BeginPlay()
 		GS->SetWeather(EWeatherState::None);
 		StartWeatherTimer();
 	}
+
+
 }
 
 void APRGMB::PostLogin(APlayerController* NewPlayer)
@@ -906,6 +908,7 @@ void APRGMB::LockAllPlayersMovementForDuration(float Duration)
 		LockPlayerMovementForDuration(PlayerCharacter, Duration);
 	}
 }
+
 
 void APRGMB::HandleMapFlowByCurrentMap()
 {

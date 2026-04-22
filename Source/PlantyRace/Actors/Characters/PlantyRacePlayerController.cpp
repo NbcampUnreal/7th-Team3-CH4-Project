@@ -12,6 +12,7 @@
 #include "Core/PRGameStateBase.h"
 #include "UI/UW_GameResult.h"
 #include "Components/TextBlock.h"
+#include "Components/ProgressBar.h"
 #include "Core/PRPlayerState.h"
 
 
@@ -47,6 +48,8 @@ void APlantyRacePlayerController::BeginPlay()
 			HUDWidgetInstance->AddToViewport();
 		}
 	}
+
+	UpdateHUD();
 
 	CreateWeatherWidget();
 
@@ -166,6 +169,43 @@ void APlantyRacePlayerController::ClientRPCShowGameResultWidget_Implementation(i
 
 				bShowMouseCursor = true;
 			}
+		}
+	}
+}
+
+
+void APlantyRacePlayerController::UpdateHUD()
+{
+	if (!IsLocalController()) return;
+
+	UUserWidget* HUDWidget = GetHUDWidget(); 
+	if (!IsValid(HUDWidget)) return;
+
+	if (APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>())
+	{
+		if (UTextBlock* TimeText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Time"))))
+		{
+			int32 Minutes = FMath::FloorToInt(GS->RemainingTime / 60.0f);
+			int32 Seconds = FMath::FloorToInt(GS->RemainingTime) % 60;
+
+			TimeText->SetText(FText::FromString(FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds)));
+		}
+
+		if (UTextBlock* LevelIndexText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("round"))))
+		{
+			LevelIndexText->SetText(FText::FromString(FString::Printf(TEXT("round: %d / 2"), GS->RoundNumber)));
+		}
+	}
+
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (IsValid(PS))
+	{
+		if (UProgressBar* GrowthProgressBar = Cast<UProgressBar>(HUDWidget->GetWidgetFromName(TEXT("GrowthProgressBar"))))
+		{
+			float MaxGrowth = PS->MaxGrowthRate;
+			float CurrentGrowth = PS->GrowthRate;
+			float Percent = (MaxGrowth > 0.0f) ? (CurrentGrowth / MaxGrowth) : 0.0f;
+			GrowthProgressBar->SetPercent(Percent);
 		}
 	}
 }

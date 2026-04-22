@@ -6,8 +6,6 @@
 #include "Actors/Characters/PlantyRacePlayerController.h"
 #include "PRPlayerState.h"
 #include "Net/UnrealNetwork.h"
-#include "Components/TextBlock.h"
-#include "Components/ProgressBar.h"
 #include "BluePrint/UserWidget.h"
 #include "Audio/PRSoundManager.h"
 
@@ -15,7 +13,7 @@ APRGameStateBase::APRGameStateBase()
 {
     CurrentWeather = EWeatherState::None;
     RoundNumber = 1;
-    RemainingTime = 0.0f;
+    RemainingTime = 180.0f;
     SoundManager = nullptr;
     bAllPlayersReady = false;
 }
@@ -72,12 +70,22 @@ FText APRGameStateBase::GetWeatherText() const
 
 void APRGameStateBase::OnRep_RoundNumber()
 {
-    //UI 업데이트
+    APlantyRacePlayerController* PC = Cast<APlantyRacePlayerController>(GetWorld()->GetFirstPlayerController());
+
+    if (PC)
+    {
+        PC->UpdateHUD();
+    }
 }
 
 void APRGameStateBase::OnRep_RemainingTime()
 {
-    //UI 업데이트
+    APlantyRacePlayerController* PC = Cast<APlantyRacePlayerController>(GetWorld()->GetFirstPlayerController());
+
+    if (PC)
+    {
+        PC->UpdateHUD();
+    }
 }
 
 void APRGameStateBase::SetRoundNumber(int32 NewRound)
@@ -107,44 +115,6 @@ APRSoundManager* APRGameStateBase::GetSoundManager() const
     return SoundManager;
 }
 
-void APRGameStateBase::UpdateHUD()
-{
-    if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
-    {
-        APlantyRacePlayerController* PlantyRacePlayerController = Cast<APlantyRacePlayerController>(PlayerController);
-
-        if (PlantyRacePlayerController)
-        {
-            APRPlayerState* APRPlayerStateInstance = Cast<APRPlayerState>(PlantyRacePlayerController->PlayerState);
-
-            if (UUserWidget* HUDWidget = PlantyRacePlayerController->GetHUDWidget())
-            {
-                /*if (UTextBlock* TimeText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Time"))))
-                {
-                    float RemainingTime = GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle);
-                    TimeText->SetText(FText::FromString(FString::Printf(TEXT("Time: %.1f"), RemainingTime)));
-                }*/
-
-                if (APRPlayerStateInstance)
-                {
-                    if (UProgressBar* GrowthProgressBar = Cast<UProgressBar>(HUDWidget->GetWidgetFromName(TEXT("GrowthProgressBar"))))
-                    {
-                        float MaxGrowth = APRPlayerStateInstance->MaxGrowthRate;
-                        float CurrentGrowth = APRPlayerStateInstance->GrowthRate;
-
-                        float Percent = (MaxGrowth > 0.0f) ? (CurrentGrowth / MaxGrowth) : 0.0f;
-                        GrowthProgressBar->SetPercent(Percent);
-                    }
-                }
-
-                if (UTextBlock* LevelIndexText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Level"))))
-                {
-                    LevelIndexText->SetText(FText::FromString(FString::Printf(TEXT("round: %d '/2'"), RoundNumber)));
-                }
-            }
-        }
-    }
-}
 
 void APRGameStateBase::OnRep_AllPlayersReady()
 {
