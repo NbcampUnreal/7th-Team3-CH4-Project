@@ -37,7 +37,6 @@ void APRGMB::BeginPlay()
 		StartWeatherTimer();
 	}
 
-	GetWorldTimerManager().SetTimer(RoundTimerHandle, this, &APRGMB::UpdateTimer, 1.0f, true);
 
 }
 
@@ -919,19 +918,6 @@ void APRGMB::LockAllPlayersMovementForDuration(float Duration)
 	}
 }
 
-void APRGMB::UpdateTimer()
-{
-	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
-	if (GS)
-	{
-		GS->RemainingTime -= 1.0f;
-
-		if (GS->RemainingTime <= 0)
-		{
-			GetWorldTimerManager().ClearTimer(RoundTimerHandle);
-		}
-	}
-}
 
 void APRGMB::HandleMapFlowByCurrentMap()
 {
