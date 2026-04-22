@@ -37,6 +37,8 @@ protected:
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 	virtual APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+	void StartRoundTimer(float InTime);
+	void UpdateRoundTimer();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn")
@@ -155,7 +157,6 @@ protected:
 	float RoundTimeLimit = 180.0f;
 
 	FTimerHandle RoundTimerHandle;
-
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
 	int32 MinPlayersToStart = 2;

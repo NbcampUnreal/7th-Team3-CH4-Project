@@ -60,7 +60,6 @@ public:
 	void SetWeather(EWeatherState NewWeather);
 	void SetRoundNumber(int32 NewRound);
 	void SetRemainingTime(float NewTime);
-	void UpdateHUD();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

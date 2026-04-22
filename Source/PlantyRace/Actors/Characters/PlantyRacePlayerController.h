@@ -64,6 +64,8 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientRPCShowGameResultWidget(int32 InRanking);
 
+	void UpdateHUD();
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UUW_GameResult> GameResultUIClass;
 

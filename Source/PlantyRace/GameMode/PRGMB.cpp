@@ -36,6 +36,8 @@ void APRGMB::BeginPlay()
 		GS->SetWeather(EWeatherState::None);
 		StartWeatherTimer();
 	}
+
+
 }
 
 void APRGMB::PostLogin(APlayerController* NewPlayer)
@@ -469,15 +471,12 @@ void APRGMB::StartRound1()
 		{
 			SoundManager->PlayRoundStartSFX();
 		}
+
+		PRGameState->SetRoundNumber(1);
 	}
+
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
-	GetWorldTimerManager().SetTimer(
-		RoundTimerHandle,
-		this,
-		&APRGMB::EndCurrentRound,
-		RoundTimeLimit,
-		false
-	);
+	StartRoundTimer(RoundTimeLimit);
 }
 
 void APRGMB::StartRound2()
@@ -524,19 +523,13 @@ void APRGMB::StartRound2()
 		{
 			SoundManager->PlayRoundStartSFX();
 		}
+
+		PRGameState->SetRoundNumber(2);
 	}
 
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
-
-	GetWorldTimerManager().SetTimer(
-		RoundTimerHandle,
-		this,
-		&APRGMB::EndCurrentRound,
-		RoundTimeLimit,
-		false
-	);
+	StartRoundTimer(RoundTimeLimit);
 }
-
 void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlayerState* PlayerState)
 {
 	if (!PlayerCharacter || !PlayerState)
@@ -916,6 +909,7 @@ void APRGMB::LockAllPlayersMovementForDuration(float Duration)
 	}
 }
 
+
 void APRGMB::HandleMapFlowByCurrentMap()
 {
 	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
@@ -976,18 +970,26 @@ void APRGMB::TryStartLobbyMatch()
 		return;
 	}
 
-	if (!GameState)
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
 	{
 		return;
 	}
 
-	const int32 PlayerCount = GameState->PlayerArray.Num();
+	const int32 PlayerCount = GS->PlayerArray.Num();
 	if (PlayerCount < MinPlayersToStart)
 	{
 		return;
 	}
 
+	if (!GS->bAllPlayersReady)
+	{
+		return;
+	}
+
 	bLobbyStartScheduled = true;
+
+	GS->SetRemainingTime(LobbyStartDelay);
 
 	GetWorldTimerManager().SetTimer(
 		LobbyStartTimerHandle,
@@ -997,7 +999,6 @@ void APRGMB::TryStartLobbyMatch()
 		false
 	);
 }
-
 void APRGMB::StartMatchFromLobby()
 {
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
@@ -1020,4 +1021,53 @@ void APRGMB::ReturnToLobbyFromResult()
 
 	GI->ClearQualifiedPlayers();
 	GI->TravelToMapByIndex(1); // L_Lobby
+}
+
+void APRGMB::StartRoundTimer(float InTime)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+
+	GS->SetRemainingTime(InTime);
+
+	GetWorldTimerManager().SetTimer(
+		RoundTimerHandle,
+		this,
+		&APRGMB::UpdateRoundTimer,
+		1.0f,
+		true
+	);
+}
+
+void APRGMB::UpdateRoundTimer()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	const float NewTime = FMath::Max(0.0f, GS->RemainingTime - 1.0f);
+	GS->SetRemainingTime(NewTime);
+
+	if (NewTime <= 0.0f)
+	{
+		GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+		EndCurrentRound();
+	}
 }
