@@ -1318,24 +1318,38 @@ void APlantyRaceCharacter::SetStartSpawnPoint(ASpawnPoint* NewSpawnPoint)
     StartSpawnPoint = NewSpawnPoint;
 }
 
-void APlantyRaceCharacter::ServerSetReady_Implementation(bool bNewReady)
-{
-	bIsReady = bNewReady;
-}
 
 void APlantyRaceCharacter::ToggleReady()
 {
 	if (!CanReady()) return;
 
-	ServerSetReady(!bIsReady);
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+	const bool bNewReady = !PS->bIsReady;
+	PS->ServerSetReady(bNewReady);
+	
 }
 
 bool APlantyRaceCharacter::CanReady() const
 {
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
 	if (!GI) return false;
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+	return MapName == TEXT("L_Lobby");
+}
 
-	return GI->CurrentMapIndex == 0;
+bool APlantyRaceCharacter::IsReady() const
+{
+	const APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (!PS)
+	{
+		return false;
+	}
+
+	return PS->bIsReady;
 }
 
 void APlantyRaceCharacter::MulticastPlayDiveMontage_Implementation()
@@ -1351,8 +1365,6 @@ void APlantyRaceCharacter::ServerApplySavedClothes_Implementation(const FClothes
 	ClothesData = NewClothes;
 	ApplyClothesFromRepData();
 	ForceNetUpdate();
-
-	UE_LOG(LogTemp, Warning, TEXT("[APPLY] Server applied saved clothes"));
 }
 
 void APlantyRaceCharacter::ClientCacheClothesData_Implementation(const FClothesRepData& NewClothes)
@@ -1365,8 +1377,7 @@ void APlantyRaceCharacter::ClientCacheClothesData_Implementation(const FClothesR
 
 	GI->SavedClothesData = NewClothes;
 	GI->bHasSavedClothesData = true;
-
-	UE_LOG(LogTemp, Warning, TEXT("[CACHE] Clothes saved to local GameInstance"));
+	
 }
 
 void APlantyRaceCharacter::OnRep_PlayerState()
@@ -1378,8 +1389,7 @@ void APlantyRaceCharacter::OnRep_PlayerState()
 	{
 		ClothesData = PS->SavedClothesData;
 		ApplyClothesFromRepData();
-
-		UE_LOG(LogTemp, Warning, TEXT("OnRep_PlayerState Clothes Applied"));
+		
 	}
 }
 
@@ -1392,7 +1402,6 @@ void APlantyRaceCharacter::PossessedBy(AController* NewController)
 	{
 		ClothesData = PS->SavedClothesData;
 		ApplyClothesFromRepData();
-		UE_LOG(LogTemp, Warning, TEXT("PossessedBy Clothes Applied"));
 	}
 }
 

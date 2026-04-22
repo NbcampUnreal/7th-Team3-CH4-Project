@@ -430,10 +430,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	void SetStartSpawnPoint(class ASpawnPoint* NewSpawnPoint);
-	UFUNCTION(Server, Reliable)
-	void ServerSetReady(bool bNewReady);
 	void ToggleReady();
 	bool CanReady() const;
+	bool IsReady() const;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
@@ -462,4 +461,5 @@ public:
 	
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastPlayDiveMontage();
+	
 };
