@@ -13,6 +13,13 @@ class UStaticMeshComponent;
 class UParticleSystemComponent;
 class APRGameStateBase;
 
+UENUM(BlueprintType)
+enum class EZoneMode : uint8
+{
+	Always,
+	Weather
+};
+
 UCLASS()
 class PLANTYRACE_API AWeatherEffectZone : public AActor
 {
@@ -51,6 +58,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
 	EWeatherState ZoneWeatherState = EWeatherState::None;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effect")
+	EZoneMode Mode = EZoneMode::Weather;
+
 	UPROPERTY(EditAnywhere, Category = "TornadoMove")
 	bool bMoveTornado = true;
 
@@ -64,10 +74,15 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "TornadoMove")
 	float MoveRange = 1000.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ZoneActive)
+	bool bZoneActive = false;
 	
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION()
 	void OnZoneBeginOverlap(
@@ -90,8 +105,13 @@ protected:
 	UFUNCTION()
 	void HandleWeatherChanged();
 
-	void UpdateZoneStateByWeather(bool bShouldActivate);
+	UFUNCTION()
+	void OnRep_ZoneActive();
+
 	void UpdateGameplayState(bool bShouldActivate);
 	void UpdateVFXState(bool bShouldActivate);
-	
+	bool ShouldActivateZone() const;
+	void RefreshZoneActiveFromWeather();
+	void ApplyVisualState(bool bActive);
+
 };
