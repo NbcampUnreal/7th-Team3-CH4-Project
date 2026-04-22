@@ -54,13 +54,19 @@ void ACheckPoint::OnCheckpointBeginOverlap(
 		return;
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("Checkpoint Actor: %s / Player: %s / LastIndex: %d / ThisIndex: %d"),
+		*GetName(),
+		*OtherActor->GetName(),
+		PlayerCharacter->GetLastCheckpointIndex(),
+		CheckpointIndex);
+
 	if (PlayerCharacter->GetLastCheckpointIndex() >= CheckpointIndex)
 	{
 		return;
 	}
 
 	PlayerCharacter->SetLastCheckpoint(this, CheckpointIndex);
-	
+
 	PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
 	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
@@ -72,7 +78,7 @@ void ACheckPoint::OnCheckpointBeginOverlap(
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Checkpoint Overlap: %s entered CheckPoint %d"),
-		*OtherActor->GetName(),
+	UE_LOG(LogTemp, Warning, TEXT("Checkpoint Saved: %s / CheckPointIndex: %d"),
+		*GetName(),
 		CheckpointIndex);
 }
