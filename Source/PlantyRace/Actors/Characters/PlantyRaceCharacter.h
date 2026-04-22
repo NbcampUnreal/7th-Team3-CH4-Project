@@ -158,6 +158,9 @@ public:
 
 	UPROPERTY()
 	float DefaultGroundFriction = 0.f;
+	
+	UPROPERTY()
+	float DefaultBrakingFrictionFactor = 0.f;
 
 	UPROPERTY()
 	float DefaultBrakingDecelerationWalking = 0.f;
@@ -165,8 +168,9 @@ public:
 	bool bSlidingFrictionApplied = false;
 	
 	FTimerHandle SlideCheckTimerHandle;
-
-	void CheckSlidingOnPlatform();
+	void ApplySlidingFriction();
+	void RestoreSlidingFriction();
+	void UpdateSlopeSliding(float DeltaSeconds);
 	bool IsOnSlidingFloor(FHitResult& OutHit) const;
 	FVector GetSlideDirection(const FVector& FloorNormal) const;
 public:
@@ -224,6 +228,7 @@ protected:
 	void OnRep_ClothesData();
 	
 	void ApplyClothesFromRepData();
+	bool CanRandomizeClothes() const;
 
 	int32 GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const;
 
