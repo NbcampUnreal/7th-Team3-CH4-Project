@@ -76,6 +76,7 @@ public:
 	void StartGrab(const FInputActionValue& Value);
 	void EndGrab(const FInputActionValue& Value);
 	void Dive(const FInputActionValue& Value);
+	void Ready(const FInputActionValue& Value);
 	void Landed(const FHitResult& Hit);
 
 public:
@@ -96,6 +97,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> IA_RandomizeClothes;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ReadyAction;
 
 
 public:
@@ -125,6 +129,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	TObjectPtr<UCurveFloat> DownhillSpeedCurve;
 
+	UPROPERTY(Replicated)
+	bool bIsReady = false;
+	
 public:
 	UPROPERTY(EditAnywhere, Category="Grab")
 	float GrabHoldDuration = 3.0f;
@@ -158,6 +165,9 @@ public:
 
 	UPROPERTY()
 	float DefaultGroundFriction = 0.f;
+	
+	UPROPERTY()
+	float DefaultBrakingFrictionFactor = 0.f;
 
 	UPROPERTY()
 	float DefaultBrakingDecelerationWalking = 0.f;
@@ -165,8 +175,9 @@ public:
 	bool bSlidingFrictionApplied = false;
 	
 	FTimerHandle SlideCheckTimerHandle;
-
-	void CheckSlidingOnPlatform();
+	void ApplySlidingFriction();
+	void RestoreSlidingFriction();
+	void UpdateSlopeSliding(float DeltaSeconds);
 	bool IsOnSlidingFloor(FHitResult& OutHit) const;
 	FVector GetSlideDirection(const FVector& FloorNormal) const;
 public:
@@ -224,6 +235,7 @@ protected:
 	void OnRep_ClothesData();
 	
 	void ApplyClothesFromRepData();
+	bool CanRandomizeClothes() const;
 
 	int32 GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const;
 
@@ -417,6 +429,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	void SetStartSpawnPoint(class ASpawnPoint* NewSpawnPoint);
+	UFUNCTION(Server, Reliable)
+	void ServerSetReady(bool bNewReady);
+	void ToggleReady();
+	bool CanReady() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	class ASpawnPoint* GetStartSpawnPoint() const { return StartSpawnPoint; }
