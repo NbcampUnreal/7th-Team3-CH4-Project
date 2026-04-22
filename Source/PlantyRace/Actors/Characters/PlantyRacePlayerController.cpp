@@ -20,6 +20,11 @@ void APlantyRacePlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	if(!IsLocalController()) return;
+
+	FInputModeGameOnly Mode;
+	SetInputMode(Mode);
+	bShowMouseCursor = false;
+
 	// only spawn touch controls on local player controllers
 	if (SVirtualJoystick::ShouldDisplayTouchInterface() && IsLocalPlayerController())
 	{
