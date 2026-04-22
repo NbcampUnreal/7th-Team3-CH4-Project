@@ -8,6 +8,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Types/WeatherEffectTypes.h"
 #include "Core/PRGameStateBase.h"
+#include "Net/UnrealNetwork.h"
 
 AWeatherEffectZone::AWeatherEffectZone()
 {
@@ -44,15 +45,19 @@ void AWeatherEffectZone::BeginPlay()
 	StartLocation = GetActorLocation();
 	
 	GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
-	if (!IsValid(GS))
+	if (IsValid(GS))
 	{
-		return;
+		GS->OnWeatherChanged.AddUObject(this, &AWeatherEffectZone::HandleWeatherChanged);
 	}
 
-	GS->OnWeatherChanged.AddUObject(this, &AWeatherEffectZone::HandleWeatherChanged);
-
-	const bool bShouldActivate = (GS->GetCurrentWeather() == ZoneWeatherState);
-	UpdateZoneStateByWeather(bShouldActivate);
+	if (HasAuthority())
+	{
+		RefreshZoneActiveFromWeather();
+	}
+	else
+	{
+		ApplyVisualState(bZoneActive);
+	}
 }
 
 void AWeatherEffectZone::Tick(float DeltaTime)
@@ -74,7 +79,7 @@ void AWeatherEffectZone::Tick(float DeltaTime)
 		return;
 	}
 
-	if (GS->GetCurrentWeather() != EWeatherState::Tornado)
+	if (!bZoneActive)
 	{
 		return;
 	}
@@ -106,6 +111,13 @@ void AWeatherEffectZone::Tick(float DeltaTime)
 	{
 		SetActorLocation(NextLocation);
 	}
+}
+
+void AWeatherEffectZone::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ThisClass, bZoneActive);
 }
 
 void AWeatherEffectZone::OnZoneBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -162,21 +174,17 @@ void AWeatherEffectZone::OnZoneEndOverlap(UPrimitiveComponent* OverlappedCompone
 
 void AWeatherEffectZone::HandleWeatherChanged()
 {
-	if (!IsValid(GS))
+	if (!HasAuthority())
 	{
 		return;
 	}
 
-	const EWeatherState CurrentWeather = GS->GetCurrentWeather();
-	const bool bShouldActivate = (CurrentWeather == ZoneWeatherState);
-
-	UpdateZoneStateByWeather(bShouldActivate);
+	RefreshZoneActiveFromWeather();
 }
 
-void AWeatherEffectZone::UpdateZoneStateByWeather(bool bShouldActivate)
+void AWeatherEffectZone::OnRep_ZoneActive()
 {
-	UpdateGameplayState(bShouldActivate);
-	UpdateVFXState(bShouldActivate);
+	ApplyVisualState(bZoneActive);
 }
 
 void AWeatherEffectZone::UpdateGameplayState(bool bShouldActivate)
@@ -212,4 +220,41 @@ void AWeatherEffectZone::UpdateVFXState(bool bShouldActivate)
 			TornadoParticle->Deactivate();
 		}
 	}
+}
+
+bool AWeatherEffectZone::ShouldActivateZone() const
+{
+	if (Mode == EZoneMode::Always)
+	{
+		return true;
+	}
+
+	if (!IsValid(GS))
+	{
+		return false;
+	}
+
+	const EWeatherState CurrentWeather = GS->GetCurrentWeather();
+
+	return CurrentWeather == ZoneWeatherState;
+}
+
+void AWeatherEffectZone::RefreshZoneActiveFromWeather()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	const bool bShouldActivate = ShouldActivateZone();
+
+	bZoneActive = bShouldActivate;
+
+	UpdateGameplayState(bZoneActive);
+	ApplyVisualState(bZoneActive);
+}
+
+void AWeatherEffectZone::ApplyVisualState(bool bActive)
+{
+	UpdateVFXState(bActive);
 }
