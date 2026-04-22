@@ -462,4 +462,14 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastPlayDiveMontage();
 	
+	
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab")
+	float GrabCooldown = 1.0f;
+
+	bool bCanGrab = true;
+
+	FTimerHandle GrabCooldownTimerHandle;
+
+	void ResetGrabCooldown();
 };
