@@ -155,6 +155,7 @@ protected:
 	float RoundTimeLimit = 180.0f;
 
 	FTimerHandle RoundTimerHandle;
+	void UpdateTimer();
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")

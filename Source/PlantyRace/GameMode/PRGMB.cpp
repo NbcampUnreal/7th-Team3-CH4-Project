@@ -36,6 +36,9 @@ void APRGMB::BeginPlay()
 		GS->SetWeather(EWeatherState::None);
 		StartWeatherTimer();
 	}
+
+	GetWorldTimerManager().SetTimer(RoundTimerHandle, this, &APRGMB::UpdateTimer, 1.0f, true);
+
 }
 
 void APRGMB::PostLogin(APlayerController* NewPlayer)
@@ -913,6 +916,20 @@ void APRGMB::LockAllPlayersMovementForDuration(float Duration)
 		}
 
 		LockPlayerMovementForDuration(PlayerCharacter, Duration);
+	}
+}
+
+void APRGMB::UpdateTimer()
+{
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (GS)
+	{
+		GS->RemainingTime -= 1.0f;
+
+		if (GS->RemainingTime <= 0)
+		{
+			GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+		}
 	}
 }
 

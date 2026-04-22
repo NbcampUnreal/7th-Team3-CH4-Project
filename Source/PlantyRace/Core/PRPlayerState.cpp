@@ -14,7 +14,7 @@ APRPlayerState::APRPlayerState()
 	bQualified = false;
 	bFinalWinner = false;
 
-	bIsReady = false;
+	bIsReady = true;
 	bIsHost = false;
 }
 
