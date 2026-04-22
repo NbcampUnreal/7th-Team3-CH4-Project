@@ -76,6 +76,7 @@ public:
 	void StartGrab(const FInputActionValue& Value);
 	void EndGrab(const FInputActionValue& Value);
 	void Dive(const FInputActionValue& Value);
+	void Ready(const FInputActionValue& Value);
 	void Landed(const FHitResult& Hit);
 
 public:
@@ -96,6 +97,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> IA_RandomizeClothes;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ReadyAction;
 
 
 public:
@@ -125,6 +129,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|Slope")
 	TObjectPtr<UCurveFloat> DownhillSpeedCurve;
 
+	UPROPERTY(Replicated)
+	bool bIsReady = false;
+	
 public:
 	UPROPERTY(EditAnywhere, Category="Grab")
 	float GrabHoldDuration = 3.0f;
@@ -158,6 +165,9 @@ public:
 
 	UPROPERTY()
 	float DefaultGroundFriction = 0.f;
+	
+	UPROPERTY()
+	float DefaultBrakingFrictionFactor = 0.f;
 
 	UPROPERTY()
 	float DefaultBrakingDecelerationWalking = 0.f;
@@ -165,8 +175,9 @@ public:
 	bool bSlidingFrictionApplied = false;
 	
 	FTimerHandle SlideCheckTimerHandle;
-
-	void CheckSlidingOnPlatform();
+	void ApplySlidingFriction();
+	void RestoreSlidingFriction();
+	void UpdateSlopeSliding(float DeltaSeconds);
 	bool IsOnSlidingFloor(FHitResult& OutHit) const;
 	FVector GetSlideDirection(const FVector& FloorNormal) const;
 public:
@@ -219,11 +230,12 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void ServerRandomizeClothes();
-protected:
+public:
 	UFUNCTION()
 	void OnRep_ClothesData();
 	
 	void ApplyClothesFromRepData();
+	bool CanRandomizeClothes() const;
 
 	int32 GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const;
 
@@ -261,8 +273,11 @@ public:
 	UFUNCTION()
 	void RandomizeClothes();
 	void InitializeModularMeshes();
+	void LoadClothesFromPlayerState();
 	void SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void OnRep_PlayerState() override;
+	virtual void PossessedBy(AController* NewController) override;
 	float GetFloorSlopeAngle() const;
 	float GetSlopeMoveDirectionDot() const;
 
@@ -334,13 +349,11 @@ protected:
 	UPROPERTY(Replicated, EditAnywhere, Category = "Pet")
 	TArray<TSubclassOf<class APRPetCharacter>> PetClasses;
 
-	// 현재 펫
+	
 	UPROPERTY(Replicated, VisibleAnywhere, Category = "Pet")
 	TObjectPtr<APRPetCharacter> CurrentPet;
 
-	// 입력
-	UPROPERTY(EditAnywhere, Category = "Input")
-	TObjectPtr<UInputAction> ChangePetAction;
+
 	
 protected:
 	
@@ -417,6 +430,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	void SetStartSpawnPoint(class ASpawnPoint* NewSpawnPoint);
+	UFUNCTION(Server, Reliable)
+	void ServerSetReady(bool bNewReady);
+	void ToggleReady();
+	bool CanReady() const;
+
 
 	UFUNCTION(BlueprintCallable, Category = "Respawn")
 	class ASpawnPoint* GetStartSpawnPoint() const { return StartSpawnPoint; }
@@ -431,4 +449,17 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Respawn")
 	TObjectPtr<class ASpawnPoint> StartSpawnPoint = nullptr;
+	
+public:
+	UFUNCTION(Client, Reliable)
+	void ClientCacheClothesData(const FClothesRepData& NewClothes);
+
+	UFUNCTION(Server, Reliable)
+	void ServerApplySavedClothes(const FClothesRepData& NewClothes);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastPlayGrabMontage();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastPlayDiveMontage();
 };

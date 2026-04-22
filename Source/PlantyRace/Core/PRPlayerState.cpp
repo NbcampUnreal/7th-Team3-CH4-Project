@@ -14,7 +14,7 @@ APRPlayerState::APRPlayerState()
 	bQualified = false;
 	bFinalWinner = false;
 
-	bIsReady = false;
+	bIsReady = true;
 	bIsHost = false;
 }
 
@@ -55,6 +55,23 @@ void APRPlayerState::GetLifetimeReplicatedProps(
 
 	DOREPLIFETIME(APRPlayerState, bIsReady);
 	DOREPLIFETIME(APRPlayerState, bIsHost);
+	
+	DOREPLIFETIME(APRPlayerState, SavedClothesData);
+	DOREPLIFETIME(APRPlayerState, bHasSavedClothesData);
+}
+
+void APRPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+	
+	APRPlayerState* NewPS = Cast<APRPlayerState>(PlayerState);
+	if (!NewPS)
+	{
+		return;
+	}
+
+	NewPS->SavedClothesData = SavedClothesData;
+	NewPS->bHasSavedClothesData = bHasSavedClothesData;
 }
 
 void APRPlayerState::ServerRequestOvergrow_Implementation()

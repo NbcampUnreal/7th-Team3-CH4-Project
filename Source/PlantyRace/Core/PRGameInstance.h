@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Actors/Characters/PlantyRaceCharacter.h"
 #include "Engine/GameInstance.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "PRGameInstance.generated.h"
@@ -54,7 +55,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Map")
 	void ResetMapFlow();
+	
+	UPROPERTY(BlueprintReadWrite, Category="Clothes")
+	FClothesRepData SavedClothesData;
 
+	UPROPERTY(BlueprintReadWrite, Category="Clothes")
+	bool bHasSavedClothesData = false;
+	
 	UPROPERTY(BlueprintReadWrite, Category = "Round")
 	TArray<FString> QualifiedPlayerNames;
 

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Types/WeatherEffectTypes.h"
+#include "Actors/Characters/PlantyRaceCharacter.h"
 #include "PRPlayerState.generated.h"
 
 UCLASS()
@@ -15,6 +16,7 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void CopyProperties(APlayerState* PlayerState) override;
 
 	// 최종 점수
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Score")
@@ -57,6 +59,13 @@ public:
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Race")
 	bool bFinalWinner;
 
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FClothesRepData SavedClothesData;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bHasSavedClothesData = false;
+	
+	
 	// 라운드 상태 초기화
 	UFUNCTION(BlueprintCallable)
 	void ResetRoundState();

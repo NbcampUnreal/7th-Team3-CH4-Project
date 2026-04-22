@@ -24,6 +24,8 @@
 #include "Actors/Characters/Pet/PRPetCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "TimerManager.h"
+#include "Core/PRGameInstance.h"
+#include "Core/PRPlayerState.h"
 
 APlantyRaceCharacter::APlantyRaceCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
@@ -153,10 +155,7 @@ void APlantyRaceCharacter::StartGrab(const FInputActionValue& Value)
 
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
-		if (GrabMontage)
-		{
-			AnimInstance->Montage_Play(GrabMontage);
-		}
+		MulticastPlayGrabMontage();
 	}
 }
 
@@ -205,10 +204,14 @@ void APlantyRaceCharacter::Dive(const FInputActionValue& Value)
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance)
 	{
-		if (DiveMontage)
-		AnimInstance->Montage_Play(DiveMontage);
+		MulticastPlayDiveMontage();
 		Multicast_PlayDivingSound();
 	}
+}
+
+void APlantyRaceCharacter::Ready(const FInputActionValue& Value)
+{
+	ToggleReady();
 }
 
 void APlantyRaceCharacter::Landed(const FHitResult& Hit)
@@ -319,7 +322,8 @@ void APlantyRaceCharacter::BeginPlay()
 {
     Super::BeginPlay();
     InitializeModularMeshes();
-    ApplyClothesFromRepData();
+	ApplyClothesFromRepData();
+	
 
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (!IsValid(MoveComp))
@@ -332,7 +336,8 @@ void APlantyRaceCharacter::BeginPlay()
 
 	DefaultGroundFriction = MoveComp->GroundFriction;
 	DefaultBrakingDecelerationWalking = MoveComp->BrakingDecelerationWalking;
-
+	DefaultBrakingFrictionFactor = MoveComp->BrakingFrictionFactor;
+	
     if (!IsValid(CharacterEffectComp))
     {
         return;
@@ -349,14 +354,23 @@ void APlantyRaceCharacter::BeginPlay()
     PGS->OnWeatherChanged.AddUObject(this, &APlantyRaceCharacter::HandleWeatherChanged);
     HandleWeatherChanged();
 	
-	GetWorldTimerManager().SetTimer(
-			SlideCheckTimerHandle,
-			this,
-			&APlantyRaceCharacter::CheckSlidingOnPlatform,
-			0.05f,
-			true
-		);
+	GetWorldTimerManager().SetTimerForNextTick([this]()
+	{
+		if (!IsLocallyControlled())
+		{
+			return;
+		}
 
+		UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+		if (!GI || !GI->bHasSavedClothesData)
+		{
+			return;
+		}
+
+		ServerApplySavedClothes(GI->SavedClothesData);
+
+		UE_LOG(LogTemp, Warning, TEXT("[LOAD REQUEST] Sent saved clothes to server"));
+	});
 	
 }
 
@@ -373,14 +387,32 @@ void APlantyRaceCharacter::Tick(float DeltaTime)
 
 void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
 {
+	
 	ClothesData.PantsIndex = GetRandomValidIndex(PantsOptions);
 	ClothesData.ShirtIndex = GetRandomValidIndex(ShirtOptions);
 	ClothesData.HairIndex = GetRandomValidIndex(HairOptions);
 	ClothesData.GlassIndex = GetRandomValidIndex(GlassOptions);
 	ClothesData.ShoeIndex = GetRandomValidIndex(ShoeOptions);
 	
+	
 	ApplyClothesFromRepData();
 	ForceNetUpdate();
+	
+	ClientCacheClothesData(ClothesData);
+	
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (PS)
+	{
+		PS->SavedClothesData = ClothesData;
+		PS->bHasSavedClothesData = true;
+		UE_LOG(LogTemp, Warning, TEXT("[SAVE FLAG] true"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SAVE FLAG] PS NULL"));
+	}
+		
+	
 }
 
 void APlantyRaceCharacter::ApplyGrabberPenalty()
@@ -455,7 +487,37 @@ void APlantyRaceCharacter::ForceReleaseGrab()
 	GetWorldTimerManager().ClearTimer(GrabReleaseTimerHandle);
 }
 
-void APlantyRaceCharacter::CheckSlidingOnPlatform()
+void APlantyRaceCharacter::ApplySlidingFriction()
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	MoveComp->GroundFriction = 0.f;
+	MoveComp->BrakingDecelerationWalking = 0.f;
+	MoveComp->BrakingFrictionFactor = 0.f;
+
+	bSlidingFrictionApplied = true;
+}
+
+void APlantyRaceCharacter::RestoreSlidingFriction()
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	MoveComp->GroundFriction = DefaultGroundFriction;
+	MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
+	MoveComp->BrakingFrictionFactor = DefaultBrakingFrictionFactor;
+
+	bSlidingFrictionApplied = false;
+}
+
+void APlantyRaceCharacter::UpdateSlopeSliding(float DeltaSeconds)
 {
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
 	if (!MoveComp)
@@ -467,9 +529,7 @@ void APlantyRaceCharacter::CheckSlidingOnPlatform()
 	{
 		if (bSlidingFrictionApplied)
 		{
-			MoveComp->GroundFriction = DefaultGroundFriction;
-			MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
-			bSlidingFrictionApplied = false;
+			RestoreSlidingFriction();
 		}
 		return;
 	}
@@ -479,9 +539,7 @@ void APlantyRaceCharacter::CheckSlidingOnPlatform()
 	{
 		if (bSlidingFrictionApplied)
 		{
-			MoveComp->GroundFriction = DefaultGroundFriction;
-			MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
-			bSlidingFrictionApplied = false;
+			RestoreSlidingFriction();
 		}
 		return;
 	}
@@ -496,11 +554,14 @@ void APlantyRaceCharacter::CheckSlidingOnPlatform()
 	{
 		if (bSlidingFrictionApplied)
 		{
-			MoveComp->GroundFriction = DefaultGroundFriction;
-			MoveComp->BrakingDecelerationWalking = DefaultBrakingDecelerationWalking;
-			bSlidingFrictionApplied = false;
+			RestoreSlidingFriction();
 		}
 		return;
+	}
+
+	if (!bSlidingFrictionApplied)
+	{
+		ApplySlidingFriction();
 	}
 
 	const FVector SlideDirection = GetSlideDirection(FloorNormal);
@@ -517,11 +578,8 @@ void APlantyRaceCharacter::CheckSlidingOnPlatform()
 
 	const float SlideStrength = FMath::Lerp(MinSlideStrength, MaxSlideStrength, Alpha);
 
-	MoveComp->GroundFriction = 0.f;
-	MoveComp->BrakingDecelerationWalking = 0.f;
-	bSlidingFrictionApplied = true;
-
-	MoveComp->Velocity += SlideDirection * SlideStrength * 0.02f;
+	MoveComp->Velocity += SlideDirection * SlideStrength * DeltaSeconds;
+	
 }
 
 
@@ -567,6 +625,13 @@ void APlantyRaceCharacter::ApplyClothesFromRepData()
 	SetMeshByIndex(HairSkeletalMesh, HairOptions, ClothesData.HairIndex);
 	SetMeshByIndex(GlassSkeletalMesh, GlassOptions, ClothesData.GlassIndex);
 	SetMeshByIndex(ShoeSkeletalMesh, ShoeOptions, ClothesData.ShoeIndex);
+}
+
+bool APlantyRaceCharacter::CanRandomizeClothes() const
+{
+	
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+	return MapName == TEXT("L_Lobby");
 }
 
 int32 APlantyRaceCharacter::GetRandomValidIndex(const TArray<TObjectPtr<USkeletalMesh>>& Options) const
@@ -655,6 +720,14 @@ void APlantyRaceCharacter::Multicast_PlayGrabSound_Implementation()
 
 void APlantyRaceCharacter::RandomizeClothes()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[RANDOMIZE] Called"));
+
+	if (!CanRandomizeClothes())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[RANDOMIZE] Blocked"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("[RANDOMIZE] Allowed"));
 	ServerRandomizeClothes();
 	ChangePetInput();
 }
@@ -692,6 +765,21 @@ void APlantyRaceCharacter::InitializeModularMeshes()
         ShoeSkeletalMesh->SetLeaderPoseComponent(GetMesh());
         ModularMeshes.Add(ShoeSkeletalMesh);
     }
+}
+
+void APlantyRaceCharacter::LoadClothesFromPlayerState()
+{
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (!PS || !PS->bHasSavedClothesData)
+	{
+		return;
+	}
+
+	ClothesData = PS->SavedClothesData;
+	ApplyClothesFromRepData();
+	ForceNetUpdate();
+
+	UE_LOG(LogTemp, Warning, TEXT("LoadClothesFromPlayerState Applied"));
 }
 
 void APlantyRaceCharacter::SetRandomMesh(USkeletalMeshComponent* TargetMesh, const TArray<TObjectPtr<USkeletalMesh>>& Options)
@@ -885,6 +973,10 @@ void APlantyRaceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		{
 			EnhancedInput->BindAction(IA_RandomizeClothes, ETriggerEvent::Started, this, &APlantyRaceCharacter::RandomizeClothes);
 		}
+    	if (ReadyAction)
+    	{
+    		EnhancedInput->BindAction(ReadyAction, ETriggerEvent::Started, this, &APlantyRaceCharacter::Ready);
+    	}
 	}
 }
 
@@ -1224,4 +1316,90 @@ void APlantyRaceCharacter::SetStartSpawnPoint(ASpawnPoint* NewSpawnPoint)
     }
 
     StartSpawnPoint = NewSpawnPoint;
+}
+
+void APlantyRaceCharacter::ServerSetReady_Implementation(bool bNewReady)
+{
+	bIsReady = bNewReady;
+}
+
+void APlantyRaceCharacter::ToggleReady()
+{
+	if (!CanReady()) return;
+
+	ServerSetReady(!bIsReady);
+}
+
+bool APlantyRaceCharacter::CanReady() const
+{
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI) return false;
+
+	return GI->CurrentMapIndex == 0;
+}
+
+void APlantyRaceCharacter::MulticastPlayDiveMontage_Implementation()
+{
+	if (DiveMontage)
+	{
+		PlayAnimMontage(DiveMontage);
+	}
+}
+
+void APlantyRaceCharacter::ServerApplySavedClothes_Implementation(const FClothesRepData& NewClothes)
+{
+	ClothesData = NewClothes;
+	ApplyClothesFromRepData();
+	ForceNetUpdate();
+
+	UE_LOG(LogTemp, Warning, TEXT("[APPLY] Server applied saved clothes"));
+}
+
+void APlantyRaceCharacter::ClientCacheClothesData_Implementation(const FClothesRepData& NewClothes)
+{
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI)
+	{
+		return;
+	}
+
+	GI->SavedClothesData = NewClothes;
+	GI->bHasSavedClothesData = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[CACHE] Clothes saved to local GameInstance"));
+}
+
+void APlantyRaceCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (PS && PS->bHasSavedClothesData)
+	{
+		ClothesData = PS->SavedClothesData;
+		ApplyClothesFromRepData();
+
+		UE_LOG(LogTemp, Warning, TEXT("OnRep_PlayerState Clothes Applied"));
+	}
+}
+
+void APlantyRaceCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (PS && PS->bHasSavedClothesData)
+	{
+		ClothesData = PS->SavedClothesData;
+		ApplyClothesFromRepData();
+		UE_LOG(LogTemp, Warning, TEXT("PossessedBy Clothes Applied"));
+	}
+}
+
+void APlantyRaceCharacter::MulticastPlayGrabMontage_Implementation()
+{
+	if (GrabMontage)
+	{
+		PlayAnimMontage(GrabMontage);
+	}
 }
