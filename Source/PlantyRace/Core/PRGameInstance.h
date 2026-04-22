@@ -62,8 +62,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category="Clothes")
 	bool bHasSavedClothesData = false;
 	
-	
-
 	UPROPERTY(BlueprintReadWrite, Category = "Round")
 	TArray<FString> QualifiedPlayerNames;
 
