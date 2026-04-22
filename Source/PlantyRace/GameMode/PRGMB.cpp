@@ -52,13 +52,18 @@ void APRGMB::PostLogin(APlayerController* NewPlayer)
 		}
 	}
 
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (IsValid(GS))
+	{
+		GS->CheackAllPlayersReady();
+	}
+
 	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
 	if (MapName == TEXT("L_Lobby"))
 	{
 		TryStartLobbyMatch();
 	}
 }
-
 AActor* APRGMB::ChoosePlayerStart_Implementation(AController* Player)
 {
 	if (SpawnPoints.Num() <= 0)
@@ -999,6 +1004,7 @@ void APRGMB::TryStartLobbyMatch()
 		false
 	);
 }
+
 void APRGMB::StartMatchFromLobby()
 {
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
@@ -1070,4 +1076,23 @@ void APRGMB::UpdateRoundTimer()
 		GetWorldTimerManager().ClearTimer(RoundTimerHandle);
 		EndCurrentRound();
 	}
+}
+
+void APRGMB::CancelLobbyMatchStart()
+{
+	if (!bLobbyStartScheduled)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
+	bLobbyStartScheduled = false;
+
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (IsValid(GS))
+	{
+		GS->SetRemainingTime(0.0f);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Lobby] Match start canceled"));
 }

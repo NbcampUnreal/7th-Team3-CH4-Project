@@ -116,6 +116,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Round")
 	EPRMatchRound GetCurrentRound() const { return CurrentRound; }
 
+	UFUNCTION(BlueprintCallable, Category = "Lobby")
+	void CancelLobbyMatchStart();
+
 protected:
 	void ProcessRound1Results();
 	void ProcessRound2Results();
