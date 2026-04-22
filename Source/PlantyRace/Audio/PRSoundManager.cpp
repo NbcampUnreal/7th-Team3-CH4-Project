@@ -1,4 +1,5 @@
-﻿#include "Audio/PRSoundManager.h"
+﻿// PRSoundManager.cpp
+#include "Audio/PRSoundManager.h"
 #include "Components/AudioComponent.h"
 #include "Components/SceneComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -6,6 +7,7 @@
 APRSoundManager::APRSoundManager()
 {
     PrimaryActorTick.bCanEverTick = false;
+    bReplicates = true;
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     SetRootComponent(Root);
@@ -43,6 +45,62 @@ USoundBase* APRSoundManager::GetBGMByType(EPRBGMType InType) const
 
 void APRSoundManager::PlayBGMByType(EPRBGMType NewBGMType)
 {
+    if (HasAuthority())
+    {
+        MulticastPlayBGMByType(NewBGMType);
+    }
+}
+
+void APRSoundManager::StopBGM()
+{
+    if (HasAuthority())
+    {
+        MulticastStopBGM();
+    }
+}
+
+void APRSoundManager::PlayCheckPointSFX(const FVector& Location)
+{
+    if (HasAuthority())
+    {
+        MulticastPlayCheckPointSFX(Location);
+    }
+}
+
+void APRSoundManager::PlayRespawnSFX(const FVector& Location)
+{
+    if (HasAuthority())
+    {
+        MulticastPlayRespawnSFX(Location);
+    }
+}
+
+void APRSoundManager::PlayFinishSFX(const FVector& Location)
+{
+    if (HasAuthority())
+    {
+        MulticastPlayFinishSFX(Location);
+    }
+}
+
+void APRSoundManager::PlayVictorySFX()
+{
+    if (HasAuthority())
+    {
+        MulticastPlayVictorySFX();
+    }
+}
+
+void APRSoundManager::PlayRoundStartSFX()
+{
+    if (HasAuthority())
+    {
+        MulticastPlayRoundStartSFX();
+    }
+}
+
+void APRSoundManager::MulticastPlayBGMByType_Implementation(EPRBGMType NewBGMType)
+{
     if (CurrentBGMType == NewBGMType)
     {
         return;
@@ -65,7 +123,7 @@ void APRSoundManager::PlayBGMByType(EPRBGMType NewBGMType)
     CurrentBGMType = NewBGMType;
 }
 
-void APRSoundManager::StopBGM()
+void APRSoundManager::MulticastStopBGM_Implementation()
 {
     if (!IsValid(BGMComponent))
     {
@@ -80,7 +138,7 @@ void APRSoundManager::StopBGM()
     CurrentBGMType = EPRBGMType::None;
 }
 
-void APRSoundManager::PlayCheckPointSFX(const FVector& Location)
+void APRSoundManager::MulticastPlayCheckPointSFX_Implementation(const FVector& Location)
 {
     if (!IsValid(CheckPointSFX))
     {
@@ -90,7 +148,7 @@ void APRSoundManager::PlayCheckPointSFX(const FVector& Location)
     UGameplayStatics::PlaySoundAtLocation(this, CheckPointSFX, Location);
 }
 
-void APRSoundManager::PlayRespawnSFX(const FVector& Location)
+void APRSoundManager::MulticastPlayRespawnSFX_Implementation(const FVector& Location)
 {
     if (!IsValid(RespawnSFX))
     {
@@ -100,7 +158,7 @@ void APRSoundManager::PlayRespawnSFX(const FVector& Location)
     UGameplayStatics::PlaySoundAtLocation(this, RespawnSFX, Location);
 }
 
-void APRSoundManager::PlayFinishSFX(const FVector& Location)
+void APRSoundManager::MulticastPlayFinishSFX_Implementation(const FVector& Location)
 {
     if (!IsValid(FinishSFX))
     {
@@ -110,7 +168,7 @@ void APRSoundManager::PlayFinishSFX(const FVector& Location)
     UGameplayStatics::PlaySoundAtLocation(this, FinishSFX, Location);
 }
 
-void APRSoundManager::PlayVictorySFX()
+void APRSoundManager::MulticastPlayVictorySFX_Implementation()
 {
     if (!IsValid(VictorySFX))
     {
@@ -120,7 +178,7 @@ void APRSoundManager::PlayVictorySFX()
     UGameplayStatics::PlaySound2D(this, VictorySFX);
 }
 
-void APRSoundManager::PlayRoundStartSFX()
+void APRSoundManager::MulticastPlayRoundStartSFX_Implementation()
 {
     if (!IsValid(RoundStartSFX))
     {

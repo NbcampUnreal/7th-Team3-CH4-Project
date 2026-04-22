@@ -1,5 +1,4 @@
-﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
-
+﻿// PRGameStateBase.h
 #pragma once
 
 #include "CoreMinimal.h"
@@ -20,7 +19,6 @@ public:
 	APRGameStateBase();
 
 	UFUNCTION()
-
 	EWeatherState GetCurrentWeather() const { return CurrentWeather; }
 
 	UFUNCTION(BlueprintCallable)
@@ -54,9 +52,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Audio")
 	APRSoundManager* GetSoundManager() const;
-	
+
+	UFUNCTION()
+	void OnRep_SoundManager();
+
 	UFUNCTION()
 	void OnRep_WeatherState();
+
 	void SetWeather(EWeatherState NewWeather);
 	void SetRoundNumber(int32 NewRound);
 	void SetRemainingTime(float NewTime);
@@ -67,6 +69,6 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_WeatherState, BlueprintReadOnly)
 	EWeatherState CurrentWeather;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Audio")
+	UPROPERTY(ReplicatedUsing = OnRep_SoundManager, BlueprintReadOnly, Category = "Audio")
 	TObjectPtr<APRSoundManager> SoundManager;
 };

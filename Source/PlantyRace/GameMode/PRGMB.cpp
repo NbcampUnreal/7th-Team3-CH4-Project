@@ -1,5 +1,4 @@
-﻿// PRGMB.cpp
-#include "GameMode/PRGMB.h"
+﻿#include "GameMode/PRGMB.h"
 #include "GameMode/SpawnPoint.h"
 #include "GameMode/CheckPoint.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
@@ -15,6 +14,10 @@
 #include "TimerManager.h"
 #include "EngineUtils.h"
 #include "Audio/PRSoundManager.h"
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 기본 / 생명주기
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 APRGMB::APRGMB()
 {
@@ -36,8 +39,6 @@ void APRGMB::BeginPlay()
 		GS->SetWeather(EWeatherState::None);
 		StartWeatherTimer();
 	}
-
-
 }
 
 void APRGMB::PostLogin(APlayerController* NewPlayer)
@@ -64,6 +65,11 @@ void APRGMB::PostLogin(APlayerController* NewPlayer)
 		TryStartLobbyMatch();
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 스폰 관련
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 AActor* APRGMB::ChoosePlayerStart_Implementation(AController* Player)
 {
 	if (SpawnPoints.Num() <= 0)
@@ -178,6 +184,10 @@ ASpawnPoint* APRGMB::GetSpawnPointByIndex(int32 Index) const
 	return nullptr;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 점수 / 결과 계산
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 float APRGMB::CalculateRaceScoreByRank(int32 Rank) const
 {
 	if (Rank <= 0)
@@ -211,6 +221,29 @@ void APRGMB::SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players
 			return A.GetTotalScore() > B.GetTotalScore();
 		});
 }
+
+void APRGMB::PrintFinishOrderLog() const
+{
+	UE_LOG(LogTemp, Warning, TEXT("----- Current Finish Order -----"));
+
+	for (int32 i = 0; i < FinishOrder.Num(); ++i)
+	{
+		const APRPlayerState* PRPlayerState = FinishOrder[i];
+		if (PRPlayerState)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%d. %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f"),
+				i + 1,
+				*PRPlayerState->GetPlayerName(),
+				PRPlayerState->GetRaceScore(),
+				PRPlayerState->GetGrowthScore(),
+				PRPlayerState->GetTotalScore());
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 플레이어 상태 / 관전 / 이동 잠금
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void APRGMB::DisableFinishedPlayer(APlantyRaceCharacter* PlayerCharacter)
 {
@@ -284,6 +317,73 @@ void APRGMB::SetSpectatorViewForFinishedPlayer(APlantyRaceCharacter* FinishedCha
 	}
 }
 
+void APRGMB::LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter, float Duration)
+{
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
+	{
+		MoveComp->DisableMovement();
+		MoveComp->StopMovementImmediately();
+	}
+
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(
+		TimerHandle,
+		[PlayerCharacter]()
+		{
+			if (!IsValid(PlayerCharacter))
+			{
+				return;
+			}
+
+			if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
+			{
+				MoveComp->SetMovementMode(MOVE_Walking);
+			}
+		},
+		Duration,
+		false
+	);
+}
+
+void APRGMB::LockAllPlayersMovementForDuration(float Duration)
+{
+	if (!GameState)
+	{
+		return;
+	}
+
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
+	{
+		if (!BasePlayerState)
+		{
+			continue;
+		}
+
+		AController* Controller = Cast<AController>(BasePlayerState->GetOwner());
+		if (!Controller)
+		{
+			continue;
+		}
+
+		APlantyRaceCharacter* PlayerCharacter = Cast<APlantyRaceCharacter>(Controller->GetPawn());
+		if (!PlayerCharacter)
+		{
+			continue;
+		}
+
+		LockPlayerMovementForDuration(PlayerCharacter, Duration);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 사운드 매니저 / BGM
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void APRGMB::SpawnSoundManager()
 {
 	if (!HasAuthority())
@@ -356,6 +456,10 @@ void APRGMB::PlayMapBGM()
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 리스폰
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 {
 	if (!PlayerCharacter)
@@ -371,8 +475,6 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 		);
 		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
-		
-		
 		APRGameStateBase* GS = GetGameState<APRGameStateBase>();
 		if (IsValid(GS))
 		{
@@ -407,9 +509,8 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 						SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
 					}
 				}
-				PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
-				
+				PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 				LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
 
 				UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (ControllerMap)"));
@@ -433,8 +534,8 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
 			}
 		}
+
 		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
-	
 
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (Character)"));
 		return;
@@ -442,6 +543,10 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 
 	UE_LOG(LogTemp, Warning, TEXT("[Respawn] No valid respawn point"));
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 라운드 시작 / 종료 / 타이머
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void APRGMB::StartRound1()
 {
@@ -488,13 +593,12 @@ void APRGMB::StartRound2()
 {
 	ResetRoundData();
 	CurrentRound = EPRMatchRound::Round2;
+	QualifiedPlayers.Empty();
 
 	if (!GameState)
 	{
 		return;
 	}
-
-	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
 
 	UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 START =========="));
 
@@ -502,12 +606,16 @@ void APRGMB::StartRound2()
 	{
 		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
 		{
+			const bool bQualified = PRPlayerState->IsQualified();
+
 			PRPlayerState->ResetRoundState();
-
-			const bool bQualified = GI ? GI->IsPlayerQualifiedForRound2(PRPlayerState->GetPlayerName()) : false;
-
 			PRPlayerState->SetQualified(bQualified);
 			PRPlayerState->SetEliminated(!bQualified);
+
+			if (bQualified)
+			{
+				QualifiedPlayers.Add(PRPlayerState);
+			}
 
 			AController* Controller = BasePlayerState->GetOwner<AController>();
 			if (Controller)
@@ -535,6 +643,100 @@ void APRGMB::StartRound2()
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
 	StartRoundTimer(RoundTimeLimit);
 }
+
+void APRGMB::EndCurrentRound()
+{
+	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+
+	if (CurrentRound == EPRMatchRound::Round1)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("========== ROUND 1 END =========="));
+		ProcessRound1Results();
+
+		if (GI)
+		{
+			GI->TravelToMapByIndex(3); // L_Round2
+		}
+	}
+	else if (CurrentRound == EPRMatchRound::Round2)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 END =========="));
+		ProcessRound2Results();
+
+		CurrentRound = EPRMatchRound::Finished;
+
+		APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
+		if (IsValid(PRGameState))
+		{
+			if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
+			{
+				SoundManager->PlayVictorySFX();
+			}
+		}
+
+		if (GI)
+		{
+			GI->TravelToMapByIndex(4); // L_Result
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("========== MATCH FINISHED =========="));
+	}
+}
+
+void APRGMB::StartRoundTimer(float InTime)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+
+	GS->SetRemainingTime(InTime);
+
+	GetWorldTimerManager().SetTimer(
+		RoundTimerHandle,
+		this,
+		&APRGMB::UpdateRoundTimer,
+		1.0f,
+		true
+	);
+}
+
+void APRGMB::UpdateRoundTimer()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	const float NewTime = FMath::Max(0.0f, GS->RemainingTime - 1.0f);
+	GS->SetRemainingTime(NewTime);
+
+	if (NewTime <= 0.0f)
+	{
+		GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+		EndCurrentRound();
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 라운드 결과 처리
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlayerState* PlayerState)
 {
 	if (!PlayerCharacter || !PlayerState)
@@ -590,46 +792,6 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 		{
 			EndCurrentRound();
 		}
-	}
-}
-
-void APRGMB::EndCurrentRound()
-{
-	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
-	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
-
-	if (CurrentRound == EPRMatchRound::Round1)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("========== ROUND 1 END =========="));
-		ProcessRound1Results();
-
-		if (GI)
-		{
-			GI->TravelToMapByIndex(3); // L_Round2
-		}
-	}
-	else if (CurrentRound == EPRMatchRound::Round2)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 END =========="));
-		ProcessRound2Results();
-
-		CurrentRound = EPRMatchRound::Finished;
-
-		APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
-		if (IsValid(PRGameState))
-		{
-			if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
-			{
-				SoundManager->PlayVictorySFX();
-			}
-		}
-
-		if (GI)
-		{
-			GI->TravelToMapByIndex(4); // L_Result
-		}
-
-		UE_LOG(LogTemp, Warning, TEXT("========== MATCH FINISHED =========="));
 	}
 }
 
@@ -722,6 +884,7 @@ void APRGMB::ProcessRound1Results()
 		}
 	}
 }
+
 void APRGMB::ProcessRound2Results()
 {
 	if (!GameState)
@@ -758,24 +921,9 @@ void APRGMB::ProcessRound2Results()
 	}
 }
 
-void APRGMB::PrintFinishOrderLog() const
-{
-	UE_LOG(LogTemp, Warning, TEXT("----- Current Finish Order -----"));
-
-	for (int32 i = 0; i < FinishOrder.Num(); ++i)
-	{
-		const APRPlayerState* PRPlayerState = FinishOrder[i];
-		if (PRPlayerState)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("%d. %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f"),
-				i + 1,
-				*PRPlayerState->GetPlayerName(),
-				PRPlayerState->GetRaceScore(),
-				PRPlayerState->GetGrowthScore(),
-				PRPlayerState->GetTotalScore());
-		}
-	}
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 날씨 시스템
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void APRGMB::StartWeatherTimer()
 {
@@ -823,7 +971,6 @@ void APRGMB::ResetWeather()
 	if (IsValid(GS) == true)
 	{
 		GS->SetWeather(EWeatherState::None);
-
 		bWeatherActive = false;
 	}
 }
@@ -851,69 +998,9 @@ EWeatherState APRGMB::GetRandomWeather() const
 	return EWeatherState::Tornado;
 }
 
-void APRGMB::LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter, float Duration)
-{
-	if (!PlayerCharacter)
-	{
-		return;
-	}
-
-	if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
-	{
-		MoveComp->DisableMovement();
-		MoveComp->StopMovementImmediately();
-	}
-
-	FTimerHandle TimerHandle;
-	GetWorldTimerManager().SetTimer(
-		TimerHandle,
-		[PlayerCharacter]()
-		{
-			if (!IsValid(PlayerCharacter))
-			{
-				return;
-			}
-
-			if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
-			{
-				MoveComp->SetMovementMode(MOVE_Walking);
-			}
-		},
-		Duration,
-		false
-	);
-}
-
-void APRGMB::LockAllPlayersMovementForDuration(float Duration)
-{
-	if (!GameState)
-	{
-		return;
-	}
-
-	for (APlayerState* BasePlayerState : GameState->PlayerArray)
-	{
-		if (!BasePlayerState)
-		{
-			continue;
-		}
-
-		AController* Controller = Cast<AController>(BasePlayerState->GetOwner());
-		if (!Controller)
-		{
-			continue;
-		}
-
-		APlantyRaceCharacter* PlayerCharacter = Cast<APlantyRaceCharacter>(Controller->GetPawn());
-		if (!PlayerCharacter)
-		{
-			continue;
-		}
-
-		LockPlayerMovementForDuration(PlayerCharacter, Duration);
-	}
-}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 맵 흐름 / 로비 시작 / 결과 복귀
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void APRGMB::HandleMapFlowByCurrentMap()
 {
@@ -1003,18 +1090,45 @@ void APRGMB::TryStartLobbyMatch()
 		LobbyStartDelay,
 		false
 	);
+
+	UE_LOG(LogTemp, Warning, TEXT("[TryStartLobbyMatch] PlayerCount: %d / MinPlayersToStart: %d / AllReady: %d / Scheduled: %d"),
+		PlayerCount,
+		MinPlayersToStart,
+		GS->bAllPlayersReady,
+		bLobbyStartScheduled);
 }
 
 void APRGMB::StartMatchFromLobby()
 {
-	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
-	if (!GI)
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
 	{
+		bLobbyStartScheduled = false;
 		return;
 	}
 
+	if (GS->PlayerArray.Num() < MinPlayersToStart || !GS->bAllPlayersReady)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Lobby] Start canceled at final check / PlayerCount: %d / MinPlayers: %d / AllReady: %d"),
+			GS->PlayerArray.Num(),
+			MinPlayersToStart,
+			GS->bAllPlayersReady);
+
+		bLobbyStartScheduled = false;
+		GS->SetRemainingTime(0.0f);
+		return;
+	}
+
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+	if (!GI)
+	{
+		bLobbyStartScheduled = false;
+		return;
+	}
+
+	bLobbyStartScheduled = false;
 	GI->ClearQualifiedPlayers();
-	GI->TravelToMapByIndex(2); // L_Round1
+	GI->TravelToMapByIndex(2);
 }
 
 void APRGMB::ReturnToLobbyFromResult()
@@ -1027,55 +1141,6 @@ void APRGMB::ReturnToLobbyFromResult()
 
 	GI->ClearQualifiedPlayers();
 	GI->TravelToMapByIndex(1); // L_Lobby
-}
-
-void APRGMB::StartRoundTimer(float InTime)
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
-	if (!IsValid(GS))
-	{
-		return;
-	}
-
-	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
-
-	GS->SetRemainingTime(InTime);
-
-	GetWorldTimerManager().SetTimer(
-		RoundTimerHandle,
-		this,
-		&APRGMB::UpdateRoundTimer,
-		1.0f,
-		true
-	);
-}
-
-void APRGMB::UpdateRoundTimer()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
-	if (!IsValid(GS))
-	{
-		return;
-	}
-
-	const float NewTime = FMath::Max(0.0f, GS->RemainingTime - 1.0f);
-	GS->SetRemainingTime(NewTime);
-
-	if (NewTime <= 0.0f)
-	{
-		GetWorldTimerManager().ClearTimer(RoundTimerHandle);
-		EndCurrentRound();
-	}
 }
 
 void APRGMB::CancelLobbyMatchStart()

@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿// PRSoundManager.h
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -93,6 +94,27 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Audio|SFX")
     void PlayRoundStartSFX();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayBGMByType(EPRBGMType NewBGMType);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastStopBGM();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayCheckPointSFX(const FVector& Location);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayRespawnSFX(const FVector& Location);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayFinishSFX(const FVector& Location);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayVictorySFX();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayRoundStartSFX();
 
 protected:
     USoundBase* GetBGMByType(EPRBGMType InType) const;
