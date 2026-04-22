@@ -293,6 +293,16 @@ void APlantyRaceCharacter::ServerGrab_Implementation()
 	
 	ApplyGrabberPenalty();
 	StartGrabReleaseTimer();
+	
+	bCanGrab = false;
+	GetWorldTimerManager().ClearTimer(GrabCooldownTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		GrabCooldownTimerHandle,
+		this,
+		&APlantyRaceCharacter::ResetGrabCooldown,
+		GrabCooldown,
+		false
+	);
 }
 
 void APlantyRaceCharacter::ServerRelease_Implementation()
@@ -911,8 +921,10 @@ bool APlantyRaceCharacter::CanJumpAction() const
 
 bool APlantyRaceCharacter::CanGrabAction() const
 {
-	return CurrentActionState == EPlayerActionState::Idle
-		|| CurrentActionState == EPlayerActionState::Jump;
+	return bCanGrab
+		&& !bIsGrabbed
+		&& CurrentActionState == EPlayerActionState::Idle
+		|| (bCanGrab && !bIsGrabbed && CurrentActionState == EPlayerActionState::Jump);
 }
 
 bool APlantyRaceCharacter::CanDiveAction() const
@@ -1350,6 +1362,11 @@ bool APlantyRaceCharacter::IsReady() const
 	}
 
 	return PS->bIsReady;
+}
+
+void APlantyRaceCharacter::ResetGrabCooldown()
+{
+	bCanGrab = true;
 }
 
 void APlantyRaceCharacter::MulticastPlayDiveMontage_Implementation()
