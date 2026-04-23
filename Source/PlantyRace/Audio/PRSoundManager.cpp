@@ -121,7 +121,7 @@ void APRSoundManager::PlayFinishSFX(const FVector& Location)
         return;
     }
 
-    UGameplayStatics::PlaySoundAtLocation(this, FinishSFX, Location);
+    UGameplayStatics::PlaySound2D(this, FinishSFX);
 }
 
 void APRSoundManager::PlayVictorySFX()
