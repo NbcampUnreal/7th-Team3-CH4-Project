@@ -23,7 +23,7 @@ void ARespawnTrigger::BeginPlay()
 	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ARespawnTrigger::OnOverlapBegin);
 }
 
-void AFinishTrigger::OnFinishTriggerBeginOverlap(
+void ARespawnTrigger::OnOverlapBegin(
 	UPrimitiveComponent* OverlappedComponent,
 	AActor* OtherActor,
 	UPrimitiveComponent* OtherComp,
@@ -33,42 +33,19 @@ void AFinishTrigger::OnFinishTriggerBeginOverlap(
 )
 {
 	if (!HasAuthority())
-	{
 		return;
-	}
 
-	APlantyRaceCharacter* PlayerCharacter = Cast<APlantyRaceCharacter>(OtherActor);
-	if (!PlayerCharacter)
-	{
-		return;
-	}
+	APlantyRaceCharacter* Player = Cast<APlantyRaceCharacter>(OtherActor);
 
-	APRPlayerState* PRPlayerState = PlayerCharacter->GetPlayerState<APRPlayerState>();
-	if (!PRPlayerState)
-	{
+	if (!Player)
 		return;
-	}
 
 	APRGMB* PRGameMode = GetWorld() ? Cast<APRGMB>(GetWorld()->GetAuthGameMode()) : nullptr;
+
 	if (!PRGameMode)
-	{
 		return;
-	}
 
-	const EPRMatchRound CurrentRound = PRGameMode->GetCurrentRound();
-	if (CurrentRound != EPRMatchRound::Round1 && CurrentRound != EPRMatchRound::Round2)
-	{
-		return;
-	}
+	PRGameMode->RespawnPlayer(Player); // Added
 
-	if (PRPlayerState->IsFinished())
-	{
-		return;
-	}
-
-	PRGameMode->RegisterPlayerFinish(PlayerCharacter, PRPlayerState);
-
-	UE_LOG(LogTemp, Warning, TEXT("[FinishTrigger] %s entered finish trigger / Round: %d"),
-		*PRPlayerState->GetPlayerName(),
-		static_cast<int32>(CurrentRound));
+	UE_LOG(LogTemp, Warning, TEXT("Player Fell! Respawn Triggered"));
 }
