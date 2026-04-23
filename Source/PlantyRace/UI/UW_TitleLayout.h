@@ -20,14 +20,16 @@ class PLANTYRACE_API UUW_TitleLayout : public UUserWidget
 public:
 	UUW_TitleLayout(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	UPROPERTY(meta = (BindWidget), BlueprintReadOnly, Category = "MyButtons")
+	TObjectPtr<UButton> OptionButton;
+
+	UPROPERTY(meta = (BindWidget), BlueprintReadOnly, Category = "MyButtons")
+	TObjectPtr<UButton> InformationButton;
 protected:
 	virtual void NativeConstruct() override;
 
 	UFUNCTION()
 	void OnEnterButtonClicked();
-
-	UFUNCTION()
-	void OnOptionButtonClicked();
 
 	UFUNCTION()
 	void OnExitButtonClicked();
@@ -36,8 +38,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = USTitleWidget, Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UButton> EnterButton;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = USTitleWidget, Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> OptionButton;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = USTitleWidget, Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UButton> ExitButton;
