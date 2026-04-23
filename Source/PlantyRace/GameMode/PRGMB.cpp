@@ -596,6 +596,11 @@ void APRGMB::StartRound2()
 				if (!bQualifiedFromGI)
 				{
 					DisableFinishedPlayer(Character);
+
+					if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(Controller))
+					{
+						PRPC->StartSpectatingOtherPlayers();
+					}
 				}
 			}
 		}
@@ -802,7 +807,9 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 			EndCurrentRound();
 		}
 	}
-}void APRGMB::ResetRoundData()
+}
+
+void APRGMB::ResetRoundData()
 {
 	FinishOrder.Empty();
 

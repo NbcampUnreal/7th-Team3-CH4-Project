@@ -415,6 +415,12 @@ void APlantyRacePlayerController::RefreshSpectateTargets()
 	if (SpectateTargets.Num() <= 0)
 	{
 		CurrentSpectateIndex = INDEX_NONE;
+
+		APawn* MyPawn = GetPawn();
+		if (IsValid(MyPawn))
+		{
+			SetViewTargetWithBlend(MyPawn, 0.2f);
+		}
 		return;
 	}
 
@@ -454,6 +460,11 @@ void APlantyRacePlayerController::ApplySpectateTargetByIndex(int32 TargetIndex)
 
 void APlantyRacePlayerController::StartSpectatingOtherPlayers()
 {
+	if (!CanSpectate())
+	{
+		return;
+	}
+
 	RefreshSpectateTargets();
 
 	if (SpectateTargets.Num() <= 0)
@@ -467,7 +478,7 @@ void APlantyRacePlayerController::StartSpectatingOtherPlayers()
 
 void APlantyRacePlayerController::SpectatePrevPlayer()
 {
-	if (!IsLocalController())
+	if (!IsLocalController() || !CanSpectate())
 	{
 		return;
 	}
@@ -494,7 +505,7 @@ void APlantyRacePlayerController::SpectatePrevPlayer()
 
 void APlantyRacePlayerController::SpectateNextPlayer()
 {
-	if (!IsLocalController())
+	if (!IsLocalController() || !CanSpectate())
 	{
 		return;
 	}
@@ -517,4 +528,64 @@ void APlantyRacePlayerController::SpectateNextPlayer()
 		(CurrentSpectateIndex + 1) % SpectateTargets.Num();
 
 	ApplySpectateTargetByIndex(NextIndex);
+}
+
+bool APlantyRacePlayerController::CanSpectate() const
+{
+	APRGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
+	{
+		return false;
+	}
+
+	// 로비 / 타이틀에서는 관전 금지
+	if (GS->RoundNumber <= 0)
+	{
+		return false;
+	}
+
+	APRPlayerState* PS = GetPlayerState<APRPlayerState>();
+	if (!IsValid(PS))
+	{
+		return false;
+	}
+
+	// 아직 플레이 중이면 관전 금지
+	if (!PS->IsFinished() && !PS->IsEliminated())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void APlantyRacePlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	if (!CanSpectate())
+	{
+		return;
+	}
+
+	if (!SpectateTargets.IsValidIndex(CurrentSpectateIndex))
+	{
+		return;
+	}
+
+	APlantyRaceCharacter* TargetCharacter = SpectateTargets[CurrentSpectateIndex];
+	if (!IsValidSpectateTarget(TargetCharacter))
+	{
+		return;
+	}
+
+	if (GetViewTarget() != TargetCharacter)
+	{
+		SetViewTarget(TargetCharacter);
+	}
 }

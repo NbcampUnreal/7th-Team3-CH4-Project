@@ -13,39 +13,29 @@ class UUW_GameResult;
 class UInputAction;
 class APlantyRaceCharacter;
 
-/**
- *  Basic PlayerController class for a third person game
- *  Manages input mappings
- */
 UCLASS(abstract)
 class APlantyRacePlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
 protected:
-
-	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
 	TArray<UInputMappingContext*> DefaultMappingContexts;
 
-	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
 	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
 
-	/** Mobile controls widget to spawn */
 	UPROPERTY(EditAnywhere, Category = "Input|Touch Controls")
 	TSubclassOf<UUserWidget> MobileControlsWidgetClass;
 
-	/** Pointer to the mobile controls widget */
 	TObjectPtr<UUserWidget> MobileControlsWidget;
 
-	/** Gameplay initialization */
 	virtual void BeginPlay() override;
-
-	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
 
 public:
+	virtual void PlayerTick(float DeltaTime) override;
+
 	void CreateWeatherWidget();
 
 	UFUNCTION()
@@ -91,6 +81,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Spectate")
 	TObjectPtr<UInputAction> SpectateNextAction;
+
+	UFUNCTION(BlueprintCallable, Category = "Spectate")
+	bool CanSpectate() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Spectate")
 	void StartSpectatingOtherPlayers();
