@@ -670,15 +670,29 @@ void APRGMB::EndCurrentRound()
 
 			GI->SaveQualifiedPlayers(QualifiedNames);
 
-			if (QualifiedPlayers.Num() > 0)
-			{
-				GI->TravelToMapByIndex(3); // L_Round2
-			}
-			else
+			if (QualifiedPlayers.Num() <= 0)
 			{
 				GI->ClearQualifiedPlayers();
-				GI->TravelToMapByIndex(1); // L_Lobby
+				GI->TravelToMapByIndex(1); 
+				return;
 			}
+
+			if (QualifiedPlayers.Num() == 1)
+			{
+				if (APRPlayerState* Winner = QualifiedPlayers[0])
+				{
+					Winner->SetFinalWinner(true);
+
+					UE_LOG(LogTemp, Warning, TEXT("===== ROUND 1 ONLY QUALIFIER FINAL WINNER: %s ====="),
+						*Winner->GetPlayerName());
+				}
+
+				CurrentRound = EPRMatchRound::Finished;
+				GI->TravelToMapByIndex(4); 
+				return;
+			}
+
+			GI->TravelToMapByIndex(3);
 		}
 	}
 	else if (CurrentRound == EPRMatchRound::Round2)
@@ -690,7 +704,7 @@ void APRGMB::EndCurrentRound()
 
 		if (GI)
 		{
-			GI->TravelToMapByIndex(4); // L_Result
+			GI->TravelToMapByIndex(4); 
 		}
 
 		UE_LOG(LogTemp, Warning, TEXT("========== MATCH FINISHED =========="));
