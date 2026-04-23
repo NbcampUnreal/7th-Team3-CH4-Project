@@ -285,10 +285,19 @@ void APRGMB::LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter
 		return;
 	}
 
+	APlayerController* PC = Cast<APlayerController>(PlayerCharacter->GetController());
+
 	if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
 	{
 		MoveComp->DisableMovement();
 		MoveComp->StopMovementImmediately();
+	}
+
+	if (PC)
+	{
+		PlayerCharacter->DisableInput(PC);
+		PC->SetIgnoreMoveInput(true);
+		PC->SetIgnoreLookInput(true);
 	}
 
 	FTimerHandle TimerHandle;
@@ -301,16 +310,24 @@ void APRGMB::LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter
 				return;
 			}
 
+			APlayerController* PC = Cast<APlayerController>(PlayerCharacter->GetController());
+
 			if (UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement())
 			{
 				MoveComp->SetMovementMode(MOVE_Walking);
+			}
+
+			if (PC)
+			{
+				PlayerCharacter->EnableInput(PC);
+				PC->SetIgnoreMoveInput(false);
+				PC->SetIgnoreLookInput(false);
 			}
 		},
 		Duration,
 		false
 	);
 }
-
 void APRGMB::LockAllPlayersMovementForDuration(float Duration)
 {
 	if (!GameState)
@@ -532,6 +549,8 @@ void APRGMB::StartRound1()
 		PRGameState->SetRoundNumber(1);
 	}
 
+	LockAllPlayersMovementForDuration(RoundStartLockDuration);
+
 	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
 		if (!BasePlayerState)
@@ -546,7 +565,6 @@ void APRGMB::StartRound1()
 		}
 	}
 
-	LockAllPlayersMovementForDuration(RoundStartLockDuration);
 	StartRoundTimer(RoundTimeLimit);
 }
 void APRGMB::StartRound2()
@@ -560,33 +578,47 @@ void APRGMB::StartRound2()
 		return;
 	}
 
+	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
+
 	UE_LOG(LogTemp, Warning, TEXT("========== ROUND 2 START =========="));
 
 	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
-		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
+		APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState);
+		if (!PRPlayerState)
 		{
-			const bool bQualified = PRPlayerState->IsQualified();
+			continue;
+		}
 
-			PRPlayerState->ResetRoundState();
-			PRPlayerState->SetQualified(bQualified);
-			PRPlayerState->SetEliminated(!bQualified);
+		const bool bQualifiedFromGI =
+			(GI && GI->IsPlayerQualifiedForRound2(PRPlayerState->GetPlayerName()));
 
-			if (bQualified)
+		PRPlayerState->ResetRoundState();
+		PRPlayerState->SetQualified(bQualifiedFromGI);
+		PRPlayerState->SetEliminated(!bQualifiedFromGI);
+		PRPlayerState->SetFinalWinner(false);
+
+		if (bQualifiedFromGI)
+		{
+			QualifiedPlayers.Add(PRPlayerState);
+		}
+
+		AController* Controller = Cast<AController>(BasePlayerState->GetOwner());
+		if (Controller)
+		{
+			APlantyRaceCharacter* Character = Cast<APlantyRaceCharacter>(Controller->GetPawn());
+			if (Character)
 			{
-				QualifiedPlayers.Add(PRPlayerState);
-			}
-
-			AController* Controller = Cast<AController>(BasePlayerState->GetOwner());
-			if (Controller)
-			{
-				APlantyRaceCharacter* Character = Cast<APlantyRaceCharacter>(Controller->GetPawn());
-				if (Character && !bQualified)
+				if (!bQualifiedFromGI)
 				{
 					DisableFinishedPlayer(Character);
 				}
 			}
 		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[Round2 Init] %s / Qualified: %s"),
+			*PRPlayerState->GetPlayerName(),
+			bQualifiedFromGI ? TEXT("YES") : TEXT("NO"));
 	}
 
 	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
@@ -594,6 +626,8 @@ void APRGMB::StartRound2()
 	{
 		PRGameState->SetRoundNumber(2);
 	}
+
+	LockAllPlayersMovementForDuration(RoundStartLockDuration);
 
 	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
@@ -609,12 +643,13 @@ void APRGMB::StartRound2()
 		}
 	}
 
-	LockAllPlayersMovementForDuration(RoundStartLockDuration);
 	StartRoundTimer(RoundTimeLimit);
 }
+
 void APRGMB::EndCurrentRound()
 {
 	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
+
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
 
 	if (CurrentRound == EPRMatchRound::Round1)
@@ -624,12 +659,25 @@ void APRGMB::EndCurrentRound()
 
 		if (GI)
 		{
+			TArray<FString> QualifiedNames;
+
+			for (APRPlayerState* QualifiedPS : QualifiedPlayers)
+			{
+				if (IsValid(QualifiedPS))
+				{
+					QualifiedNames.Add(QualifiedPS->GetPlayerName());
+				}
+			}
+
+			GI->SaveQualifiedPlayers(QualifiedNames);
+
 			if (QualifiedPlayers.Num() > 0)
 			{
 				GI->TravelToMapByIndex(3); // L_Round2
 			}
 			else
 			{
+				GI->ClearQualifiedPlayers();
 				GI->TravelToMapByIndex(1); // L_Lobby
 			}
 		}
@@ -649,6 +697,7 @@ void APRGMB::EndCurrentRound()
 		UE_LOG(LogTemp, Warning, TEXT("========== MATCH FINISHED =========="));
 	}
 }
+
 void APRGMB::StartRoundTimer(float InTime)
 {
 	if (!HasAuthority())
@@ -942,6 +991,7 @@ void APRGMB::HandleMapFlowByCurrentMap()
 
 	if (MapName == TEXT("L_Title"))
 	{
+		PlayMapBGM();
 		return;
 	}
 
@@ -957,6 +1007,7 @@ void APRGMB::HandleMapFlowByCurrentMap()
 			PC->bShowMouseCursor = false;
 		}
 
+		PlayMapBGM();
 		TryStartLobbyMatch();
 		return;
 	}
@@ -964,20 +1015,43 @@ void APRGMB::HandleMapFlowByCurrentMap()
 	if (MapName == TEXT("L_Round1"))
 	{
 		CollectSpawnPoints();
-		StartRound1();
+		PlayMapBGM();
+
+		FTimerHandle DelayHandle;
+		GetWorldTimerManager().SetTimer(
+			DelayHandle,
+			[this]()
+			{
+				StartRound1();
+			},
+			0.5f,
+			false
+		);
 		return;
 	}
 
 	if (MapName == TEXT("L_Round2"))
 	{
 		CollectSpawnPoints();
-		StartRound2();
+		PlayMapBGM();
+
+		FTimerHandle DelayHandle;
+		GetWorldTimerManager().SetTimer(
+			DelayHandle,
+			[this]()
+			{
+				StartRound2();
+			},
+			0.5f,
+			false
+		);
 		return;
 	}
 
 	if (MapName == TEXT("L_Result"))
 	{
 		CurrentRound = EPRMatchRound::Finished;
+		PlayMapBGM();
 
 		GetWorldTimerManager().SetTimer(
 			ResultReturnTimerHandle,
@@ -988,7 +1062,6 @@ void APRGMB::HandleMapFlowByCurrentMap()
 		);
 	}
 }
-
 void APRGMB::TryStartLobbyMatch()
 {
 	if (bLobbyStartScheduled)
@@ -1015,14 +1088,16 @@ void APRGMB::TryStartLobbyMatch()
 
 	bLobbyStartScheduled = true;
 
+	GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
+
 	GS->SetRemainingTime(LobbyStartDelay);
 
 	GetWorldTimerManager().SetTimer(
 		LobbyStartTimerHandle,
 		this,
-		&APRGMB::StartMatchFromLobby,
-		LobbyStartDelay,
-		false
+		&APRGMB::UpdateLobbyCountdown,
+		1.0f,
+		true
 	);
 
 	UE_LOG(LogTemp, Warning, TEXT("[TryStartLobbyMatch] PlayerCount: %d / MinPlayersToStart: %d / AllReady: %d / Scheduled: %d"),
@@ -1031,13 +1106,13 @@ void APRGMB::TryStartLobbyMatch()
 		GS->bAllPlayersReady,
 		bLobbyStartScheduled);
 }
-
 void APRGMB::StartMatchFromLobby()
 {
 	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
 	if (!IsValid(GS))
 	{
 		bLobbyStartScheduled = false;
+		GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
 		return;
 	}
 
@@ -1049,6 +1124,7 @@ void APRGMB::StartMatchFromLobby()
 			GS->bAllPlayersReady);
 
 		bLobbyStartScheduled = false;
+		GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
 		GS->SetRemainingTime(0.0f);
 		return;
 	}
@@ -1057,14 +1133,17 @@ void APRGMB::StartMatchFromLobby()
 	if (!GI)
 	{
 		bLobbyStartScheduled = false;
+		GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
 		return;
 	}
 
 	bLobbyStartScheduled = false;
+	GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
+	GS->SetRemainingTime(0.0f);
+
 	GI->ClearQualifiedPlayers();
 	GI->TravelToMapByIndex(2);
 }
-
 void APRGMB::ReturnToLobbyFromResult()
 {
 	UPRGameInstance* GI = GetGameInstance<UPRGameInstance>();
@@ -1094,4 +1173,31 @@ void APRGMB::CancelLobbyMatchStart()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[Lobby] Match start canceled"));
+}
+void APRGMB::UpdateLobbyCountdown()
+{
+	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+	if (!IsValid(GS))
+	{
+		GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
+		bLobbyStartScheduled = false;
+		return;
+	}
+
+	if (GS->PlayerArray.Num() < MinPlayersToStart || !GS->bAllPlayersReady)
+	{
+		GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
+		bLobbyStartScheduled = false;
+		GS->SetRemainingTime(0.0f);
+		return;
+	}
+
+	const float NewTime = FMath::Max(0.0f, GS->RemainingTime - 1.0f);
+	GS->SetRemainingTime(NewTime);
+
+	if (NewTime <= 0.0f)
+	{
+		GetWorldTimerManager().ClearTimer(LobbyStartTimerHandle);
+		StartMatchFromLobby();
+	}
 }
