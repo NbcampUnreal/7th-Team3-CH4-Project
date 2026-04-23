@@ -354,14 +354,21 @@ void APlantyRaceCharacter::BeginPlay()
 // Called every frame
 void APlantyRaceCharacter::Tick(float DeltaTime)
 {
-    Super::Tick(DeltaTime);
+	Super::Tick(DeltaTime);
 
-    if (TornadoComp && TornadoComp->IsInTornado() && HasAuthority())
-    {
-        TornadoComp->UpdateTornadoMovement(DeltaTime);
-    }
+	if (TornadoComp && TornadoComp->IsInTornado() && HasAuthority())
+	{
+		TornadoComp->UpdateTornadoMovement(DeltaTime);
+	}
+
+	if (IsLocallyControlled())
+	{
+		if (AController* MyController = GetController())
+		{
+			ServerUpdateSpectateViewRotation(MyController->GetControlRotation());
+		}
+	}
 }
-
 void APlantyRaceCharacter::ServerRandomizeClothes_Implementation()
 {
 	
@@ -772,15 +779,16 @@ void APlantyRaceCharacter::SetRandomMesh(USkeletalMeshComponent* TargetMesh, con
 
 void APlantyRaceCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(ThisClass, bIsGrabbed);
+	DOREPLIFETIME(ThisClass, bIsGrabbed);
 	DOREPLIFETIME(ThisClass, ClothesData);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabTarget);
 	DOREPLIFETIME(APlantyRaceCharacter, GrabbedBy);
-    DOREPLIFETIME(ThisClass, bIsKnockedDown);
+	DOREPLIFETIME(ThisClass, bIsKnockedDown);
 	DOREPLIFETIME(APlantyRaceCharacter, CurrentPet);
 	DOREPLIFETIME(APlantyRaceCharacter, CurrentActionState);
+	DOREPLIFETIME(APlantyRaceCharacter, ReplicatedSpectateViewRotation);
 }
 
 float APlantyRaceCharacter::GetFloorSlopeAngle() const
@@ -1437,3 +1445,9 @@ void APlantyRaceCharacter::ServerDive_Implementation()
 	MulticastPlayDiveMontage();
 	Multicast_PlayDivingSound();
 }
+
+void APlantyRaceCharacter::ServerUpdateSpectateViewRotation_Implementation(FRotator NewRotation)
+{
+	ReplicatedSpectateViewRotation = NewRotation;
+}
+
