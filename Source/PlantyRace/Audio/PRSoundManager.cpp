@@ -1,4 +1,5 @@
-﻿#include "Audio/PRSoundManager.h"
+﻿// PRSoundManager.cpp
+#include "Audio/PRSoundManager.h"
 #include "Components/AudioComponent.h"
 #include "Components/SceneComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -6,6 +7,7 @@
 APRSoundManager::APRSoundManager()
 {
     PrimaryActorTick.bCanEverTick = false;
+    bReplicates = true;
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     SetRootComponent(Root);
@@ -43,6 +45,12 @@ USoundBase* APRSoundManager::GetBGMByType(EPRBGMType InType) const
 
 void APRSoundManager::PlayBGMByType(EPRBGMType NewBGMType)
 {
+    if (HasAuthority())
+    {
+        MulticastPlayBGMByType(NewBGMType);
+        return;
+    }
+
     if (CurrentBGMType == NewBGMType)
     {
         return;
@@ -67,6 +75,12 @@ void APRSoundManager::PlayBGMByType(EPRBGMType NewBGMType)
 
 void APRSoundManager::StopBGM()
 {
+    if (HasAuthority())
+    {
+        MulticastStopBGM();
+        return;
+    }
+
     if (!IsValid(BGMComponent))
     {
         return;
@@ -104,10 +118,12 @@ void APRSoundManager::PlayFinishSFX(const FVector& Location)
 {
     if (!IsValid(FinishSFX))
     {
+        UE_LOG(LogTemp, Error, TEXT("[FinishSFX] FinishSFX null"));
         return;
     }
 
-    UGameplayStatics::PlaySoundAtLocation(this, FinishSFX, Location);
+    UE_LOG(LogTemp, Warning, TEXT("[FinishSFX] PlaySound2D 실행"));
+    UGameplayStatics::PlaySound2D(this, FinishSFX);
 }
 
 void APRSoundManager::PlayVictorySFX()
@@ -128,4 +144,43 @@ void APRSoundManager::PlayRoundStartSFX()
     }
 
     UGameplayStatics::PlaySound2D(this, RoundStartSFX);
+}
+
+void APRSoundManager::MulticastPlayBGMByType_Implementation(EPRBGMType NewBGMType)
+{
+    if (CurrentBGMType == NewBGMType)
+    {
+        return;
+    }
+
+    USoundBase* NewBGM = GetBGMByType(NewBGMType);
+    if (!IsValid(NewBGM) || !IsValid(BGMComponent))
+    {
+        return;
+    }
+
+    if (BGMComponent->IsPlaying())
+    {
+        BGMComponent->FadeOut(BGMFadeTime, 0.0f);
+    }
+
+    BGMComponent->SetSound(NewBGM);
+    BGMComponent->FadeIn(BGMFadeTime, 1.0f, 0.0f);
+
+    CurrentBGMType = NewBGMType;
+}
+
+void APRSoundManager::MulticastStopBGM_Implementation()
+{
+    if (!IsValid(BGMComponent))
+    {
+        return;
+    }
+
+    if (BGMComponent->IsPlaying())
+    {
+        BGMComponent->FadeOut(BGMFadeTime, 0.0f);
+    }
+
+    CurrentBGMType = EPRBGMType::None;
 }

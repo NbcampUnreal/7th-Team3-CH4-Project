@@ -39,6 +39,7 @@ protected:
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	void StartRoundTimer(float InTime);
 	void UpdateRoundTimer();
+	void UpdateLobbyCountdown();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn")
@@ -162,7 +163,7 @@ protected:
 	FTimerHandle RoundTimerHandle;
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
-	int32 MinPlayersToStart = 2;
+	int32 MinPlayersToStart = 4;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
 	float LobbyStartDelay = 5.0f;
