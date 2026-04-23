@@ -1,21 +1,24 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
-
-
-#include "PlantyRacePlayerController.h"
+﻿#include "PlantyRacePlayerController.h"
+#include "Audio/PRSoundManager.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
+#include "Core/PRGameStateBase.h"
+#include "Core/PRPlayerState.h"
+#include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/Character.h"
+#include "GameMode/PRGMB.h"
+#include "InputAction.h"
 #include "InputMappingContext.h"
-#include "Blueprint/UserWidget.h"
-#include "PlantyRace.h"
-#include "Widgets/Input/SVirtualJoystick.h"
-#include "UI/PRWeatherWidget.h"
-#include "Core/PRGameStateBase.h"
-#include "UI/UW_GameResult.h"
-#include "Components/TextBlock.h"
-#include "Components/ProgressBar.h"
-#include "Audio/PRSoundManager.h"
 #include "Kismet/GameplayStatics.h"
-#include "Core/PRPlayerState.h"
+#include "PlantyRace.h"
+#include "UI/PRWeatherWidget.h"
+#include "UI/UW_GameResult.h"
+#include "Widgets/Input/SVirtualJoystick.h"
 
 
 void APlantyRacePlayerController::BeginPlay()
@@ -90,10 +93,8 @@ void APlantyRacePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
 	{
-		// Add Input Mapping Contexts
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 		{
 			for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
@@ -101,7 +102,6 @@ void APlantyRacePlayerController::SetupInputComponent()
 				Subsystem->AddMappingContext(CurrentContext, 0);
 			}
 
-			// only add these IMCs if we're not using mobile touch input
 			if (!SVirtualJoystick::ShouldDisplayTouchInterface())
 			{
 				for (UInputMappingContext* CurrentContext : MobileExcludedMappingContexts)
@@ -109,6 +109,19 @@ void APlantyRacePlayerController::SetupInputComponent()
 					Subsystem->AddMappingContext(CurrentContext, 0);
 				}
 			}
+		}
+	}
+
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		if (SpectatePrevAction)
+		{
+			EnhancedInput->BindAction(SpectatePrevAction, ETriggerEvent::Started, this, &APlantyRacePlayerController::SpectatePrevPlayer);
+		}
+
+		if (SpectateNextAction)
+		{
+			EnhancedInput->BindAction(SpectateNextAction, ETriggerEvent::Started, this, &APlantyRacePlayerController::SpectateNextPlayer);
 		}
 	}
 }
@@ -340,4 +353,168 @@ void APlantyRacePlayerController::ClientPlayRoundStartSFX_Implementation()
 	}
 
 	SM->PlayRoundStartSFX();
+}
+
+bool APlantyRacePlayerController::IsValidSpectateTarget(APlantyRaceCharacter* TargetCharacter) const
+{
+	if (!IsValid(TargetCharacter))
+	{
+		return false;
+	}
+
+	if (TargetCharacter->IsHidden() || !TargetCharacter->GetActorEnableCollision())
+	{
+		return false;
+	}
+
+	APRPlayerState* TargetPS = TargetCharacter->GetPlayerState<APRPlayerState>();
+	if (!IsValid(TargetPS))
+	{
+		return false;
+	}
+
+	if (TargetPS->IsFinished())
+	{
+		return false;
+	}
+
+	if (TargetPS->IsEliminated())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void APlantyRacePlayerController::RefreshSpectateTargets()
+{
+	SpectateTargets.Empty();
+
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	for (TActorIterator<APlantyRaceCharacter> It(World); It; ++It)
+	{
+		APlantyRaceCharacter* TargetCharacter = *It;
+		if (!IsValidSpectateTarget(TargetCharacter))
+		{
+			continue;
+		}
+
+		if (TargetCharacter == GetPawn())
+		{
+			continue;
+		}
+
+		SpectateTargets.Add(TargetCharacter);
+	}
+
+	if (SpectateTargets.Num() <= 0)
+	{
+		CurrentSpectateIndex = INDEX_NONE;
+		return;
+	}
+
+	if (!SpectateTargets.IsValidIndex(CurrentSpectateIndex))
+	{
+		CurrentSpectateIndex = 0;
+	}
+}
+
+void APlantyRacePlayerController::ApplySpectateTargetByIndex(int32 TargetIndex)
+{
+	if (!SpectateTargets.IsValidIndex(TargetIndex))
+	{
+		return;
+	}
+
+	APlantyRaceCharacter* TargetCharacter = SpectateTargets[TargetIndex];
+	if (!IsValidSpectateTarget(TargetCharacter))
+	{
+		RefreshSpectateTargets();
+
+		if (!SpectateTargets.IsValidIndex(TargetIndex))
+		{
+			return;
+		}
+
+		TargetCharacter = SpectateTargets[TargetIndex];
+		if (!IsValidSpectateTarget(TargetCharacter))
+		{
+			return;
+		}
+	}
+
+	CurrentSpectateIndex = TargetIndex;
+	SetViewTargetWithBlend(TargetCharacter, 0.35f);
+}
+
+void APlantyRacePlayerController::StartSpectatingOtherPlayers()
+{
+	RefreshSpectateTargets();
+
+	if (SpectateTargets.Num() <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectateIndex = 0;
+	ApplySpectateTargetByIndex(CurrentSpectateIndex);
+}
+
+void APlantyRacePlayerController::SpectatePrevPlayer()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	RefreshSpectateTargets();
+
+	if (SpectateTargets.Num() <= 0)
+	{
+		return;
+	}
+
+	if (CurrentSpectateIndex == INDEX_NONE)
+	{
+		CurrentSpectateIndex = 0;
+		ApplySpectateTargetByIndex(CurrentSpectateIndex);
+		return;
+	}
+
+	const int32 PrevIndex =
+		(CurrentSpectateIndex - 1 + SpectateTargets.Num()) % SpectateTargets.Num();
+
+	ApplySpectateTargetByIndex(PrevIndex);
+}
+
+void APlantyRacePlayerController::SpectateNextPlayer()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	RefreshSpectateTargets();
+
+	if (SpectateTargets.Num() <= 0)
+	{
+		return;
+	}
+
+	if (CurrentSpectateIndex == INDEX_NONE)
+	{
+		CurrentSpectateIndex = 0;
+		ApplySpectateTargetByIndex(CurrentSpectateIndex);
+		return;
+	}
+
+	const int32 NextIndex =
+		(CurrentSpectateIndex + 1) % SpectateTargets.Num();
+
+	ApplySpectateTargetByIndex(NextIndex);
 }
