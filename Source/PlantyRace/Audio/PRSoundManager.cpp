@@ -48,7 +48,29 @@ void APRSoundManager::PlayBGMByType(EPRBGMType NewBGMType)
     if (HasAuthority())
     {
         MulticastPlayBGMByType(NewBGMType);
+        return;
     }
+
+    if (CurrentBGMType == NewBGMType)
+    {
+        return;
+    }
+
+    USoundBase* NewBGM = GetBGMByType(NewBGMType);
+    if (!IsValid(NewBGM) || !IsValid(BGMComponent))
+    {
+        return;
+    }
+
+    if (BGMComponent->IsPlaying())
+    {
+        BGMComponent->FadeOut(BGMFadeTime, 0.0f);
+    }
+
+    BGMComponent->SetSound(NewBGM);
+    BGMComponent->FadeIn(BGMFadeTime, 1.0f, 0.0f);
+
+    CurrentBGMType = NewBGMType;
 }
 
 void APRSoundManager::StopBGM()
@@ -56,47 +78,70 @@ void APRSoundManager::StopBGM()
     if (HasAuthority())
     {
         MulticastStopBGM();
+        return;
     }
+
+    if (!IsValid(BGMComponent))
+    {
+        return;
+    }
+
+    if (BGMComponent->IsPlaying())
+    {
+        BGMComponent->FadeOut(BGMFadeTime, 0.0f);
+    }
+
+    CurrentBGMType = EPRBGMType::None;
 }
 
 void APRSoundManager::PlayCheckPointSFX(const FVector& Location)
 {
-    if (HasAuthority())
+    if (!IsValid(CheckPointSFX))
     {
-        MulticastPlayCheckPointSFX(Location);
+        return;
     }
+
+    UGameplayStatics::PlaySoundAtLocation(this, CheckPointSFX, Location);
 }
 
 void APRSoundManager::PlayRespawnSFX(const FVector& Location)
 {
-    if (HasAuthority())
+    if (!IsValid(RespawnSFX))
     {
-        MulticastPlayRespawnSFX(Location);
+        return;
     }
+
+    UGameplayStatics::PlaySoundAtLocation(this, RespawnSFX, Location);
 }
 
 void APRSoundManager::PlayFinishSFX(const FVector& Location)
 {
-    if (HasAuthority())
+    if (!IsValid(FinishSFX))
     {
-        MulticastPlayFinishSFX(Location);
+        return;
     }
+
+    UGameplayStatics::PlaySoundAtLocation(this, FinishSFX, Location);
 }
 
 void APRSoundManager::PlayVictorySFX()
 {
-    if (HasAuthority())
+    if (!IsValid(VictorySFX))
     {
-        MulticastPlayVictorySFX();
+        return;
     }
+
+    UGameplayStatics::PlaySound2D(this, VictorySFX);
 }
 
 void APRSoundManager::PlayRoundStartSFX()
 {
-    if (HasAuthority())
+    if (!IsValid(RoundStartSFX))
     {
-        MulticastPlayRoundStartSFX();
+        return;
     }
+
+    UGameplayStatics::PlaySound2D(this, RoundStartSFX);
 }
 
 void APRSoundManager::MulticastPlayBGMByType_Implementation(EPRBGMType NewBGMType)
@@ -136,54 +181,4 @@ void APRSoundManager::MulticastStopBGM_Implementation()
     }
 
     CurrentBGMType = EPRBGMType::None;
-}
-
-void APRSoundManager::MulticastPlayCheckPointSFX_Implementation(const FVector& Location)
-{
-    if (!IsValid(CheckPointSFX))
-    {
-        return;
-    }
-
-    UGameplayStatics::PlaySoundAtLocation(this, CheckPointSFX, Location);
-}
-
-void APRSoundManager::MulticastPlayRespawnSFX_Implementation(const FVector& Location)
-{
-    if (!IsValid(RespawnSFX))
-    {
-        return;
-    }
-
-    UGameplayStatics::PlaySoundAtLocation(this, RespawnSFX, Location);
-}
-
-void APRSoundManager::MulticastPlayFinishSFX_Implementation(const FVector& Location)
-{
-    if (!IsValid(FinishSFX))
-    {
-        return;
-    }
-
-    UGameplayStatics::PlaySoundAtLocation(this, FinishSFX, Location);
-}
-
-void APRSoundManager::MulticastPlayVictorySFX_Implementation()
-{
-    if (!IsValid(VictorySFX))
-    {
-        return;
-    }
-
-    UGameplayStatics::PlaySound2D(this, VictorySFX);
-}
-
-void APRSoundManager::MulticastPlayRoundStartSFX_Implementation()
-{
-    if (!IsValid(RoundStartSFX))
-    {
-        return;
-    }
-
-    UGameplayStatics::PlaySound2D(this, RoundStartSFX);
 }

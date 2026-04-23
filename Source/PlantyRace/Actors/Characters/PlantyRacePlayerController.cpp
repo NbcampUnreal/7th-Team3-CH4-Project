@@ -13,6 +13,8 @@
 #include "UI/UW_GameResult.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+#include "Audio/PRSoundManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "Core/PRPlayerState.h"
 
 
@@ -20,29 +22,24 @@ void APlantyRacePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if(!IsLocalController()) return;
+	if (!IsLocalController()) return;
 
 	FInputModeGameOnly Mode;
 	SetInputMode(Mode);
 	bShowMouseCursor = false;
 
-	// only spawn touch controls on local player controllers
 	if (SVirtualJoystick::ShouldDisplayTouchInterface() && IsLocalPlayerController())
 	{
-		// spawn the mobile controls widget
 		MobileControlsWidget = CreateWidget<UUserWidget>(this, MobileControlsWidgetClass);
 
 		if (MobileControlsWidget)
 		{
-			// add the controls to the player screen
 			MobileControlsWidget->AddToPlayerScreen(0);
-
-		} else {
-
-			UE_LOG(LogPlantyRace, Error, TEXT("Could not spawn mobile controls widget."));
-
 		}
-
+		else
+		{
+			UE_LOG(LogPlantyRace, Error, TEXT("Could not spawn mobile controls widget."));
+		}
 	}
 
 	if (HUDWidgetClass)
@@ -55,7 +52,6 @@ void APlantyRacePlayerController::BeginPlay()
 	}
 
 	UpdateHUD();
-
 	CreateWeatherWidget();
 
 	APRGameStateBase* PGS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
@@ -66,8 +62,30 @@ void APlantyRacePlayerController::BeginPlay()
 
 	PGS->OnWeatherChanged.AddUObject(this, &APlantyRacePlayerController::HandleWeatherChanged);
 	HandleWeatherChanged();
-}
 
+	const FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+
+	if (MapName == TEXT("L_Title"))
+	{
+		ClientPlayMapBGM(EPRBGMType::Title);
+	}
+	else if (MapName == TEXT("L_Lobby"))
+	{
+		ClientPlayMapBGM(EPRBGMType::Lobby);
+	}
+	else if (MapName == TEXT("L_Round1"))
+	{
+		ClientPlayMapBGM(EPRBGMType::Round1);
+	}
+	else if (MapName == TEXT("L_Round2"))
+	{
+		ClientPlayMapBGM(EPRBGMType::Round2);
+	}
+	else if (MapName == TEXT("L_Result"))
+	{
+		ClientPlayMapBGM(EPRBGMType::Result);
+	}
+}
 void APlantyRacePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -213,4 +231,92 @@ void APlantyRacePlayerController::UpdateHUD()
 			GrowthProgressBar->SetPercent(Percent);
 		}
 	}
+}
+
+void APlantyRacePlayerController::ClientPlayCheckPointSFX_Implementation(FVector Location)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	APRSoundManager* SM = GS->GetSoundManager();
+	if (!IsValid(SM))
+	{
+		return;
+	}
+
+	SM->PlayCheckPointSFX(Location);
+}
+
+void APlantyRacePlayerController::ClientPlayRespawnSFX_Implementation(FVector Location)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	APRSoundManager* SM = GS->GetSoundManager();
+	if (!IsValid(SM))
+	{
+		return;
+	}
+
+	SM->PlayRespawnSFX(Location);
+}
+
+void APlantyRacePlayerController::ClientPlayFinishSFX_Implementation(FVector Location)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	APRSoundManager* SM = GS->GetSoundManager();
+	if (!IsValid(SM))
+	{
+		return;
+	}
+
+	SM->PlayFinishSFX(Location);
+}
+
+void APlantyRacePlayerController::ClientPlayMapBGM_Implementation(EPRBGMType BGMType)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	APRSoundManager* SM = GS->GetSoundManager();
+	if (!IsValid(SM))
+	{
+		return;
+	}
+
+	SM->PlayBGMByType(BGMType);
 }

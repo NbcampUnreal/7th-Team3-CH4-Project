@@ -74,12 +74,14 @@ protected:
     EPRBGMType CurrentBGMType = EPRBGMType::None;
 
 public:
+    // 공용 BGM
     UFUNCTION(BlueprintCallable, Category = "Audio|BGM")
     void PlayBGMByType(EPRBGMType NewBGMType);
 
     UFUNCTION(BlueprintCallable, Category = "Audio|BGM")
     void StopBGM();
 
+    // 개인별 SFX (호출된 로컬 클라이언트에서만 재생)
     UFUNCTION(BlueprintCallable, Category = "Audio|SFX")
     void PlayCheckPointSFX(const FVector& Location);
 
@@ -95,26 +97,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|SFX")
     void PlayRoundStartSFX();
 
+    // 공용 BGM만 멀티캐스트
     UFUNCTION(NetMulticast, Reliable)
     void MulticastPlayBGMByType(EPRBGMType NewBGMType);
 
     UFUNCTION(NetMulticast, Reliable)
     void MulticastStopBGM();
-
-    UFUNCTION(NetMulticast, Reliable)
-    void MulticastPlayCheckPointSFX(const FVector& Location);
-
-    UFUNCTION(NetMulticast, Reliable)
-    void MulticastPlayRespawnSFX(const FVector& Location);
-
-    UFUNCTION(NetMulticast, Reliable)
-    void MulticastPlayFinishSFX(const FVector& Location);
-
-    UFUNCTION(NetMulticast, Reliable)
-    void MulticastPlayVictorySFX();
-
-    UFUNCTION(NetMulticast, Reliable)
-    void MulticastPlayRoundStartSFX();
 
 protected:
     USoundBase* GetBGMByType(EPRBGMType InType) const;
