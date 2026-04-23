@@ -36,7 +36,7 @@ void APRGMB::BeginPlay()
 	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
 	if (IsValid(GS))
 	{
-		GS->SetWeather(EWeatherState::Sun);
+		GS->SetWeather(EWeatherState::None);
 		StartWeatherTimer();
 	}
 }
