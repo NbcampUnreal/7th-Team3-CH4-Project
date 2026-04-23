@@ -320,3 +320,24 @@ void APlantyRacePlayerController::ClientPlayMapBGM_Implementation(EPRBGMType BGM
 
 	SM->PlayBGMByType(BGMType);
 }
+void APlantyRacePlayerController::ClientPlayRoundStartSFX_Implementation()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	APRGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<APRGameStateBase>() : nullptr;
+	if (!IsValid(GS))
+	{
+		return;
+	}
+
+	APRSoundManager* SM = GS->GetSoundManager();
+	if (!IsValid(SM))
+	{
+		return;
+	}
+
+	SM->PlayRoundStartSFX();
+}
