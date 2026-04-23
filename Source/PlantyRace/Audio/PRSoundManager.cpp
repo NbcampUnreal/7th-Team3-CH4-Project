@@ -17,6 +17,8 @@ APRSoundManager::APRSoundManager()
     BGMComponent->bAutoActivate = false;
     BGMComponent->bIsUISound = true;
     BGMComponent->bAllowSpatialization = false;
+    
+    bAlwaysRelevant = true;
 }
 
 void APRSoundManager::BeginPlay()
@@ -78,6 +80,8 @@ void APRSoundManager::StopBGM()
     if (HasAuthority())
     {
         MulticastStopBGM();
+        UE_LOG(LogTemp, Error, TEXT("사운드 중단점 1 "));
+
         return;
     }
 
@@ -174,6 +178,8 @@ void APRSoundManager::MulticastStopBGM_Implementation()
 {
     if (!IsValid(BGMComponent))
     {
+        UE_LOG(LogTemp, Error, TEXT("사운드 중단점 2 "));
+
         return;
     }
 
