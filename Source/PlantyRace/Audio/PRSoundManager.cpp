@@ -118,9 +118,11 @@ void APRSoundManager::PlayFinishSFX(const FVector& Location)
 {
     if (!IsValid(FinishSFX))
     {
+        UE_LOG(LogTemp, Error, TEXT("[FinishSFX] FinishSFX null"));
         return;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("[FinishSFX] PlaySound2D 실행"));
     UGameplayStatics::PlaySound2D(this, FinishSFX);
 }
 
