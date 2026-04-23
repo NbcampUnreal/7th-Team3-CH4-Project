@@ -67,17 +67,20 @@ void AFinishTrigger::OnFinishTriggerBeginOverlap(
 		return;
 	}
 
-	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
-	if (IsValid(GS))
+	const EPRMatchRound CurrentRound = PRGameMode->GetCurrentRound();
+	if (CurrentRound != EPRMatchRound::Round1 && CurrentRound != EPRMatchRound::Round2)
 	{
-		if (APRSoundManager* SM = GS->GetSoundManager())
-		{
-			SM->PlayFinishSFX(GetActorLocation());
-		}
+		return;
+	}
+
+	if (PRPlayerState->IsFinished())
+	{
+		return;
 	}
 
 	PRGameMode->RegisterPlayerFinish(PlayerCharacter, PRPlayerState);
 
-	UE_LOG(LogTemp, Warning, TEXT("[FinishTrigger] %s entered finish trigger"),
-		*PRPlayerState->GetPlayerName());
+	UE_LOG(LogTemp, Warning, TEXT("[FinishTrigger] %s entered finish trigger / Round: %d"),
+		*PRPlayerState->GetPlayerName(),
+		static_cast<int32>(CurrentRound));
 }

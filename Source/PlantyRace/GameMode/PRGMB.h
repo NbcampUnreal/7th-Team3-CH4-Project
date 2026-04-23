@@ -39,6 +39,7 @@ protected:
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	void StartRoundTimer(float InTime);
 	void UpdateRoundTimer();
+	void UpdateLobbyCountdown();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn")

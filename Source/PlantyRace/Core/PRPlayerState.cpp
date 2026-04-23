@@ -25,6 +25,7 @@ void APRPlayerState::ResetRoundState()
 {
 	FinishRank = 0;
 	bFinished = false;
+	bQualified = false;
 	bFinalWinner = false;
 	bEliminated = false;
 }
