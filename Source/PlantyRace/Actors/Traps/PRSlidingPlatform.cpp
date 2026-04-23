@@ -33,8 +33,8 @@ void APRSlidingPlatform::BeginPlay()
     NetUpdatePeriod = 1.f / GetNetUpdateFrequency();
 
     // 시작할 때 현재 회전값 한번 맞춰줌
-    const FRotator InitRot = MakeRotationFromElapsedTime(ElapsedTime);
-    SetActorRotation(InitRot);
+    const FRotator InitRot = MakeRotationFromElapsedTime(ElapsedTime); 
+    SetActorRotation(InitRot); 
 }
 
 

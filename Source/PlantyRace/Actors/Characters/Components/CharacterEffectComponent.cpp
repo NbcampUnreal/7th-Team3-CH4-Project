@@ -98,7 +98,6 @@ void UCharacterEffectComponent::UpdateWeatherModifiers()
 	case EWeatherState::Sun:
 		WeatherMoveSpeedMultiplier = 1.5f;
 		WeatherJumpMultiplier = 1.f;
-		bWeatherBlockJump = true;
 		break;
 	default:
 		WeatherMoveSpeedMultiplier = 1.0f;
