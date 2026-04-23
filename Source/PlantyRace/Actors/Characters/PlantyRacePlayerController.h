@@ -81,6 +81,9 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientPlayMapBGM(EPRBGMType BGMType);
 
+	UFUNCTION(Client, Reliable)
+	void ClientPlayRoundStartSFX();
+
 protected:
 	UPROPERTY()
 	UPRWeatherWidget* WeatherWidget;

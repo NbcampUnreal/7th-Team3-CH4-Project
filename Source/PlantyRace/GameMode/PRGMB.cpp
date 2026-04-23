@@ -187,40 +187,6 @@ ASpawnPoint* APRGMB::GetSpawnPointByIndex(int32 Index) const
 // 점수 / 결과 계산
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float APRGMB::CalculateRaceScoreByRank(int32 Rank) const
-{
-	if (Rank <= 0)
-	{
-		return 0.0f;
-	}
-
-	return FMath::Max(0.0f, FirstPlaceRaceScore - ((Rank - 1) * RaceScoreStep));
-}
-
-void APRGMB::UpdateAllPlayerTotalScores()
-{
-	if (!GameState)
-	{
-		return;
-	}
-
-	for (APlayerState* BasePlayerState : GameState->PlayerArray)
-	{
-		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
-		{
-			PRPlayerState->UpdateGrowthScoreFromRate();
-		}
-	}
-}
-
-void APRGMB::SortPlayersByTotalScore(TArray<TObjectPtr<APRPlayerState>>& Players) const
-{
-	Players.Sort([](const APRPlayerState& A, const APRPlayerState& B)
-		{
-			return A.GetTotalScore() > B.GetTotalScore();
-		});
-}
-
 void APRGMB::PrintFinishOrderLog() const
 {
 	UE_LOG(LogTemp, Warning, TEXT("----- Current Finish Order -----"));
@@ -230,16 +196,12 @@ void APRGMB::PrintFinishOrderLog() const
 		const APRPlayerState* PRPlayerState = FinishOrder[i];
 		if (PRPlayerState)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("%d. %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f"),
+			UE_LOG(LogTemp, Warning, TEXT("%d. %s"),
 				i + 1,
-				*PRPlayerState->GetPlayerName(),
-				PRPlayerState->GetRaceScore(),
-				PRPlayerState->GetGrowthScore(),
-				PRPlayerState->GetTotalScore());
+				*PRPlayerState->GetPlayerName());
 		}
 	}
 }
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // 플레이어 상태 / 관전 / 이동 잠금
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -542,13 +504,16 @@ void APRGMB::StartRound1()
 
 	CurrentRound = EPRMatchRound::Round1;
 
-	UE_LOG(LogTemp, Warning, TEXT("========== ROUND 1 START =========="));
-	UE_LOG(LogTemp, Warning, TEXT("Rule: Top %d players qualify."), Round1QualifiedCount);
-
 	if (!GameState)
 	{
 		return;
 	}
+
+	const int32 PlayerCount = GameState->PlayerArray.Num();
+	Round1QualifiedCount = FMath::Max(1, FMath::CeilToInt(PlayerCount / 2.0f));
+
+	UE_LOG(LogTemp, Warning, TEXT("========== ROUND 1 START =========="));
+	UE_LOG(LogTemp, Warning, TEXT("Rule: First %d players qualify."), Round1QualifiedCount);
 
 	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
@@ -564,18 +529,26 @@ void APRGMB::StartRound1()
 	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
 	if (IsValid(PRGameState))
 	{
-		if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
+		PRGameState->SetRoundNumber(1);
+	}
+
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
+	{
+		if (!BasePlayerState)
 		{
-			SoundManager->PlayRoundStartSFX();
+			continue;
 		}
 
-		PRGameState->SetRoundNumber(1);
+		APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(BasePlayerState->GetOwner());
+		if (PRPC)
+		{
+			PRPC->ClientPlayRoundStartSFX();
+		}
 	}
 
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
 	StartRoundTimer(RoundTimeLimit);
 }
-
 void APRGMB::StartRound2()
 {
 	ResetRoundData();
@@ -604,7 +577,7 @@ void APRGMB::StartRound2()
 				QualifiedPlayers.Add(PRPlayerState);
 			}
 
-			AController* Controller = BasePlayerState->GetOwner<AController>();
+			AController* Controller = Cast<AController>(BasePlayerState->GetOwner());
 			if (Controller)
 			{
 				APlantyRaceCharacter* Character = Cast<APlantyRaceCharacter>(Controller->GetPawn());
@@ -619,18 +592,26 @@ void APRGMB::StartRound2()
 	APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
 	if (IsValid(PRGameState))
 	{
-		if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
+		PRGameState->SetRoundNumber(2);
+	}
+
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
+	{
+		if (!BasePlayerState)
 		{
-			SoundManager->PlayRoundStartSFX();
+			continue;
 		}
 
-		PRGameState->SetRoundNumber(2);
+		APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(BasePlayerState->GetOwner());
+		if (PRPC)
+		{
+			PRPC->ClientPlayRoundStartSFX();
+		}
 	}
 
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
 	StartRoundTimer(RoundTimeLimit);
 }
-
 void APRGMB::EndCurrentRound()
 {
 	GetWorldTimerManager().ClearTimer(RoundTimerHandle);
@@ -643,7 +624,14 @@ void APRGMB::EndCurrentRound()
 
 		if (GI)
 		{
-			GI->TravelToMapByIndex(3); // L_Round2
+			if (QualifiedPlayers.Num() > 0)
+			{
+				GI->TravelToMapByIndex(3); // L_Round2
+			}
+			else
+			{
+				GI->TravelToMapByIndex(1); // L_Lobby
+			}
 		}
 	}
 	else if (CurrentRound == EPRMatchRound::Round2)
@@ -653,15 +641,6 @@ void APRGMB::EndCurrentRound()
 
 		CurrentRound = EPRMatchRound::Finished;
 
-		APRGameStateBase* PRGameState = GetGameState<APRGameStateBase>();
-		if (IsValid(PRGameState))
-		{
-			if (APRSoundManager* SoundManager = PRGameState->GetSoundManager())
-			{
-				SoundManager->PlayVictorySFX();
-			}
-		}
-
 		if (GI)
 		{
 			GI->TravelToMapByIndex(4); // L_Result
@@ -670,7 +649,6 @@ void APRGMB::EndCurrentRound()
 		UE_LOG(LogTemp, Warning, TEXT("========== MATCH FINISHED =========="));
 	}
 }
-
 void APRGMB::StartRoundTimer(float InTime)
 {
 	if (!HasAuthority())
@@ -750,8 +728,6 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 
 	const int32 NewRank = FinishOrder.Num() + 1;
 	PlayerState->SetFinishRank(NewRank);
-	PlayerState->SetRaceScore(CalculateRaceScoreByRank(NewRank));
-	PlayerState->SetTotalScore(PlayerState->GetRaceScore() + PlayerState->GetGrowthScore());
 
 	if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
 	{
@@ -763,11 +739,9 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 	DisableFinishedPlayer(PlayerCharacter);
 	SetSpectatorViewForFinishedPlayer(PlayerCharacter);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Finish] %s finished with rank %d / RaceScore %.1f / TotalScore %.1f"),
+	UE_LOG(LogTemp, Warning, TEXT("[Finish] %s finished with rank %d"),
 		*PlayerState->GetPlayerName(),
-		NewRank,
-		PlayerState->GetRaceScore(),
-		PlayerState->GetTotalScore());
+		NewRank);
 
 	PrintFinishOrderLog();
 
@@ -785,8 +759,7 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 			EndCurrentRound();
 		}
 	}
-}
-void APRGMB::ResetRoundData()
+}void APRGMB::ResetRoundData()
 {
 	FinishOrder.Empty();
 
@@ -823,59 +796,39 @@ void APRGMB::ProcessRound1Results()
 		return;
 	}
 
-	UpdateAllPlayerTotalScores();
+	const int32 MaxQualifiedCount = FMath::Min(Round1QualifiedCount, FinishOrder.Num());
 
-	TArray<TObjectPtr<APRPlayerState>> AllPlayers;
 	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
 		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
 		{
-			AllPlayers.Add(PRPlayerState);
+			PRPlayerState->SetQualified(false);
+			PRPlayerState->SetEliminated(true);
 		}
 	}
 
-	SortPlayersByTotalScore(AllPlayers);
-
-	TArray<FString> QualifiedNames;
-
-	for (int32 i = 0; i < AllPlayers.Num(); ++i)
+	for (int32 i = 0; i < MaxQualifiedCount; ++i)
 	{
-		if (APRPlayerState* PRPlayerState = AllPlayers[i])
+		if (APRPlayerState* PRPlayerState = FinishOrder[i])
 		{
-			const bool bQualified = i < Round1QualifiedCount;
-
-			PRPlayerState->SetQualified(bQualified);
-			PRPlayerState->SetEliminated(!bQualified);
-
-			if (bQualified)
-			{
-				QualifiedPlayers.Add(PRPlayerState);
-				QualifiedNames.Add(PRPlayerState->GetPlayerName());
-			}
+			PRPlayerState->SetQualified(true);
+			PRPlayerState->SetEliminated(false);
+			QualifiedPlayers.Add(PRPlayerState);
 		}
 	}
 
-	if (UPRGameInstance* GI = GetGameInstance<UPRGameInstance>())
+	UE_LOG(LogTemp, Warning, TEXT("----- ROUND 1 RESULT -----"));
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
-		GI->SaveQualifiedPlayers(QualifiedNames);
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("----- ROUND 1 RESULT (TotalScore) -----"));
-	for (int32 i = 0; i < AllPlayers.Num(); ++i)
-	{
-		if (APRPlayerState* PRPlayerState = AllPlayers[i])
+		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("%d. %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f / Qualified %s"),
-				i + 1,
+			UE_LOG(LogTemp, Warning, TEXT("%s / FinishRank: %d / Qualified: %s"),
 				*PRPlayerState->GetPlayerName(),
-				PRPlayerState->GetRaceScore(),
-				PRPlayerState->GetGrowthScore(),
-				PRPlayerState->GetTotalScore(),
+				PRPlayerState->GetFinishRank(),
 				PRPlayerState->IsQualified() ? TEXT("YES") : TEXT("NO"));
 		}
 	}
 }
-
 void APRGMB::ProcessRound2Results()
 {
 	if (!GameState)
@@ -883,35 +836,25 @@ void APRGMB::ProcessRound2Results()
 		return;
 	}
 
-	UpdateAllPlayerTotalScores();
-
-	TArray<TObjectPtr<APRPlayerState>> FinalPlayers;
-	for (APRPlayerState* QualifiedPlayer : QualifiedPlayers)
+	for (APlayerState* BasePlayerState : GameState->PlayerArray)
 	{
-		if (QualifiedPlayer)
+		if (APRPlayerState* PRPlayerState = Cast<APRPlayerState>(BasePlayerState))
 		{
-			QualifiedPlayer->SetFinalWinner(false);
-			FinalPlayers.Add(QualifiedPlayer);
+			PRPlayerState->SetFinalWinner(false);
 		}
 	}
 
-	SortPlayersByTotalScore(FinalPlayers);
-
-	if (FinalPlayers.Num() > 0)
+	if (FinishOrder.Num() > 0)
 	{
-		if (APRPlayerState* Winner = FinalPlayers[0])
+		if (APRPlayerState* Winner = FinishOrder[0])
 		{
 			Winner->SetFinalWinner(true);
 
-			UE_LOG(LogTemp, Warning, TEXT("===== FINAL WINNER: %s / RaceScore %.1f / GrowthScore %.1f / TotalScore %.1f ====="),
-				*Winner->GetPlayerName(),
-				Winner->GetRaceScore(),
-				Winner->GetGrowthScore(),
-				Winner->GetTotalScore());
+			UE_LOG(LogTemp, Warning, TEXT("===== FINAL WINNER: %s ====="),
+				*Winner->GetPlayerName());
 		}
 	}
 }
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // 날씨 시스템
 ////////////////////////////////////////////////////////////////////////////////////////////////////

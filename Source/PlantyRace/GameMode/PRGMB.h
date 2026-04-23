@@ -162,7 +162,7 @@ protected:
 	FTimerHandle RoundTimerHandle;
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
-	int32 MinPlayersToStart = 2;
+	int32 MinPlayersToStart = 4;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
 	float LobbyStartDelay = 5.0f;

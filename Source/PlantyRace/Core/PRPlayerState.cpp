@@ -25,13 +25,8 @@ void APRPlayerState::ResetRoundState()
 {
 	FinishRank = 0;
 	bFinished = false;
-	bQualified = false;
 	bFinalWinner = false;
 	bEliminated = false;
-
-	RaceScore = 0.0f;
-	GrowthScore = 0.0f;
-	TotalScore = 0.0f;
 }
 
 void APRPlayerState::UpdateGrowthScoreFromRate()
