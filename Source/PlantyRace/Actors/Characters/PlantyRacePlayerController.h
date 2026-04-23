@@ -97,6 +97,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Spectate")
 	void SpectateNextPlayer();
 
+
 protected:
 	UPROPERTY()
 	UPRWeatherWidget* WeatherWidget;

@@ -309,7 +309,13 @@ void APlantyRacePlayerController::ClientPlayFinishSFX_Implementation(FVector Loc
 		return;
 	}
 
-	SM->PlayFinishSFX(Location);
+	USoundBase* FinishSound = SM->GetFinishSFX();
+	if (!IsValid(FinishSound))
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySound2D(this, FinishSound);
 }
 
 void APlantyRacePlayerController::ClientPlayMapBGM_Implementation(EPRBGMType BGMType)

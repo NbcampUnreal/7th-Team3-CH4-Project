@@ -104,6 +104,9 @@ public:
     UFUNCTION(NetMulticast, Reliable)
     void MulticastStopBGM();
 
+    UFUNCTION(BlueprintPure, Category = "SFX")
+    USoundBase* GetFinishSFX() const { return FinishSFX; }
+
 protected:
     USoundBase* GetBGMByType(EPRBGMType InType) const;
 };

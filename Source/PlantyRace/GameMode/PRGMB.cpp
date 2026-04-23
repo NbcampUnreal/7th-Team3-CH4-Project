@@ -779,7 +779,12 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 
 	if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[FinishSFX] RegisterPlayerFinish -> RPC 호출"));
 		PRPC->ClientPlayFinishSFX(PlayerCharacter->GetActorLocation());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[FinishSFX] PlayerController null"));
 	}
 
 	FinishOrder.Add(PlayerState);
