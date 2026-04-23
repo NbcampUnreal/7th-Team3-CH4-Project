@@ -5,6 +5,7 @@
 #include "AIController.h"
 #include "NavigationSystem.h"
 #include "TimerManager.h"
+#include "Navigation/PathFollowingComponent.h"
 
 APRPigCharacter::APRPigCharacter()
 {
@@ -25,7 +26,22 @@ void APRPigCharacter::BeginPlay()
 
     InitialLocation = GetActorLocation();
 
+    if (!HasAuthority())
+    {
+        return;
+    }
+
     StartRandomMove();
+}
+
+void APRPigCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(RandomMoveTimerHandle);
+    }
+
+    Super::EndPlay(EndPlayReason);
 }
 
 void APRPigCharacter::OnPigHitOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -116,21 +132,37 @@ void APRPigCharacter::StartRandomMove()
         return;
     }
 
-    MoveToRandomLocation();
+    if (MoveInterval <= 0.f)
+    {
+        return;
+    }
+
+    const float InitialDelay = FMath::FRandRange(0.f, MoveInterval);;
 
     World->GetTimerManager().SetTimer(
         RandomMoveTimerHandle,
         this,
         &APRPigCharacter::MoveToRandomLocation,
         MoveInterval,
-        true
+        true,
+        InitialDelay
     );
 }
 
 void APRPigCharacter::MoveToRandomLocation()
 {
+    if (!HasAuthority())
+    {
+        return;
+    }
+
     AAIController* AIC = Cast<AAIController>(GetController());
     if (!IsValid(AIC))
+    {
+        return;
+    }
+
+    if (AIC->GetMoveStatus() == EPathFollowingStatus::Moving)
     {
         return;
     }
