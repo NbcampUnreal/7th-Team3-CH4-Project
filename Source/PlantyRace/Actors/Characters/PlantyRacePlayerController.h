@@ -10,6 +10,8 @@ class UInputMappingContext;
 class UUserWidget;
 class UPRWeatherWidget;
 class UUW_GameResult;
+class UInputAction;
+class APlantyRaceCharacter;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -19,19 +21,19 @@ UCLASS(abstract)
 class APlantyRacePlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
+
 protected:
 
 	/** Input Mapping Contexts */
-	UPROPERTY(EditAnywhere, Category ="Input|Input Mappings")
+	UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
 	TArray<UInputMappingContext*> DefaultMappingContexts;
 
 	/** Input Mapping Contexts */
-	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
+	UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
 	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
 
 	/** Mobile controls widget to spawn */
-	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
+	UPROPERTY(EditAnywhere, Category = "Input|Touch Controls")
 	TSubclassOf<UUserWidget> MobileControlsWidgetClass;
 
 	/** Pointer to the mobile controls widget */
@@ -84,6 +86,24 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientPlayRoundStartSFX();
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Spectate")
+	TObjectPtr<UInputAction> SpectatePrevAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Spectate")
+	TObjectPtr<UInputAction> SpectateNextAction;
+
+	UFUNCTION(BlueprintCallable, Category = "Spectate")
+	void StartSpectatingOtherPlayers();
+
+	UFUNCTION(BlueprintCallable, Category = "Spectate")
+	void RefreshSpectateTargets();
+
+	UFUNCTION(BlueprintCallable, Category = "Spectate")
+	void SpectatePrevPlayer();
+
+	UFUNCTION(BlueprintCallable, Category = "Spectate")
+	void SpectateNextPlayer();
+
 protected:
 	UPROPERTY()
 	UPRWeatherWidget* WeatherWidget;
@@ -91,4 +111,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UPRWeatherWidget> WeatherWidgetClass;
 
+	UPROPERTY()
+	TArray<TObjectPtr<APlantyRaceCharacter>> SpectateTargets;
+
+	UPROPERTY()
+	int32 CurrentSpectateIndex = INDEX_NONE;
+
+	void ApplySpectateTargetByIndex(int32 TargetIndex);
+	bool IsValidSpectateTarget(APlantyRaceCharacter* TargetCharacter) const;
 };

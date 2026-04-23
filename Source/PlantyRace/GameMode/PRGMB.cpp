@@ -243,41 +243,14 @@ void APRGMB::SetSpectatorViewForFinishedPlayer(APlantyRaceCharacter* FinishedCha
 		return;
 	}
 
-	APlayerController* FinishedPC = Cast<APlayerController>(FinishedCharacter->GetController());
+	APlantyRacePlayerController* FinishedPC = Cast<APlantyRacePlayerController>(FinishedCharacter->GetController());
 	if (!FinishedPC)
 	{
 		return;
 	}
 
-	for (TActorIterator<APlantyRaceCharacter> It(GetWorld()); It; ++It)
-	{
-		APlantyRaceCharacter* OtherCharacter = *It;
-		if (!OtherCharacter || OtherCharacter == FinishedCharacter)
-		{
-			continue;
-		}
-
-		if (OtherCharacter->IsHidden())
-		{
-			continue;
-		}
-
-		APRPlayerState* OtherPS = OtherCharacter->GetPlayerState<APRPlayerState>();
-		if (!OtherPS)
-		{
-			continue;
-		}
-
-		if (OtherPS->IsFinished())
-		{
-			continue;
-		}
-
-		FinishedPC->SetViewTargetWithBlend(OtherCharacter, 0.5f);
-		return;
-	}
+	FinishedPC->StartSpectatingOtherPlayers();
 }
-
 void APRGMB::LockPlayerMovementForDuration(APlantyRaceCharacter* PlayerCharacter, float Duration)
 {
 	if (!PlayerCharacter)
@@ -547,6 +520,7 @@ void APRGMB::StartRound1()
 	if (IsValid(PRGameState))
 	{
 		PRGameState->SetRoundNumber(1);
+		PRGameState->SetRemainingTime(RoundTimeLimit);
 	}
 
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
@@ -565,8 +539,18 @@ void APRGMB::StartRound1()
 		}
 	}
 
-	StartRoundTimer(RoundTimeLimit);
+	FTimerHandle RoundStartDelayHandle;
+	GetWorldTimerManager().SetTimer(
+		RoundStartDelayHandle,
+		[this]()
+		{
+			StartRoundTimer(RoundTimeLimit);
+		},
+		RoundStartLockDuration,
+		false
+	);
 }
+
 void APRGMB::StartRound2()
 {
 	ResetRoundData();
@@ -625,6 +609,7 @@ void APRGMB::StartRound2()
 	if (IsValid(PRGameState))
 	{
 		PRGameState->SetRoundNumber(2);
+		PRGameState->SetRemainingTime(RoundTimeLimit);
 	}
 
 	LockAllPlayersMovementForDuration(RoundStartLockDuration);
@@ -643,7 +628,16 @@ void APRGMB::StartRound2()
 		}
 	}
 
-	StartRoundTimer(RoundTimeLimit);
+	FTimerHandle RoundStartDelayHandle;
+	GetWorldTimerManager().SetTimer(
+		RoundStartDelayHandle,
+		[this]()
+		{
+			StartRoundTimer(RoundTimeLimit);
+		},
+		RoundStartLockDuration,
+		false
+	);
 }
 
 void APRGMB::EndCurrentRound()
