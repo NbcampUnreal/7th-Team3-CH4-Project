@@ -69,6 +69,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UUW_GameResult> GameResultUIClass;
 
+	UFUNCTION(Client, Reliable)
+	void ClientPlayCheckPointSFX(FVector Location);
+
+	UFUNCTION(Client, Reliable)
+	void ClientPlayRespawnSFX(FVector Location);
+
+	UFUNCTION(Client, Reliable)
+	void ClientPlayFinishSFX(FVector Location);
+
+	UFUNCTION(Client, Reliable)
+	void ClientPlayMapBGM(EPRBGMType BGMType);
+
 protected:
 	UPROPERTY()
 	UPRWeatherWidget* WeatherWidget;
