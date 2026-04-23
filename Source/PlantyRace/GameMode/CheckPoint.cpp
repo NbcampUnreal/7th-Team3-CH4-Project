@@ -4,7 +4,6 @@
 #include "Components/SceneComponent.h"
 #include "Core/PRGameStateBase.h"
 #include "Audio/PRSoundManager.h"
-#include "Actors/Characters/PlantyRacePlayerController.h"
 #include "Actors/Characters/PlantyRaceCharacter.h"
 
 ACheckPoint::ACheckPoint()
@@ -67,11 +66,16 @@ void ACheckPoint::OnCheckpointBeginOverlap(
 	}
 
 	PlayerCharacter->SetLastCheckpoint(this, CheckpointIndex);
+
 	PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
-	if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
+	APRGameStateBase* GS = GetWorld()->GetGameState<APRGameStateBase>();
+	if (IsValid(GS))
 	{
-		PRPC->ClientPlayCheckPointSFX(GetActorLocation());
+		if (APRSoundManager* SM = GS->GetSoundManager())
+		{
+			SM->PlayCheckPointSFX(GetActorLocation());
+		}
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Checkpoint Saved: %s / CheckPointIndex: %d"),

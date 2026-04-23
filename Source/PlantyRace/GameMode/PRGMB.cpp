@@ -13,7 +13,6 @@
 #include "Core/PRGameStateBase.h"
 #include "TimerManager.h"
 #include "EngineUtils.h"
-#include "Actors/Characters/PlantyRacePlayerController.h"
 #include "Audio/PRSoundManager.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +30,7 @@ void APRGMB::BeginPlay()
 	Super::BeginPlay();
 
 	SpawnSoundManager();
+	PlayMapBGM();
 	HandleMapFlowByCurrentMap();
 
 	APRGameStateBase* GS = GetGameState<APRGameStateBase>();
@@ -475,9 +475,13 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 		);
 		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
-		if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
+		APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+		if (IsValid(GS))
 		{
-			PRPC->ClientPlayRespawnSFX(PlayerCharacter->GetActorLocation());
+			if (APRSoundManager* SM = GS->GetSoundManager())
+			{
+				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
+			}
 		}
 
 		LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
@@ -497,13 +501,16 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 					(*FoundSpawn)->GetActorRotation()
 				);
 
-				PlayerCharacter->SetActionState(EPlayerActionState::Idle);
-
-				if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
+				APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+				if (IsValid(GS))
 				{
-					PRPC->ClientPlayRespawnSFX(PlayerCharacter->GetActorLocation());
+					if (APRSoundManager* SM = GS->GetSoundManager())
+					{
+						SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
+					}
 				}
 
+				PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 				LockPlayerMovementForDuration(PlayerCharacter, RespawnLockDuration);
 
 				UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (ControllerMap)"));
@@ -519,12 +526,16 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 			StartSpawn->GetActorRotation()
 		);
 
-		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
-
-		if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
+		APRGameStateBase* GS = GetGameState<APRGameStateBase>();
+		if (IsValid(GS))
 		{
-			PRPC->ClientPlayRespawnSFX(PlayerCharacter->GetActorLocation());
+			if (APRSoundManager* SM = GS->GetSoundManager())
+			{
+				SM->PlayRespawnSFX(PlayerCharacter->GetActorLocation());
+			}
 		}
+
+		PlayerCharacter->SetActionState(EPlayerActionState::Idle);
 
 		UE_LOG(LogTemp, Warning, TEXT("[Respawn] Player moved to StartSpawnPoint (Character)"));
 		return;
@@ -532,6 +543,7 @@ void APRGMB::RespawnPlayer(APlantyRaceCharacter* PlayerCharacter)
 
 	UE_LOG(LogTemp, Warning, TEXT("[Respawn] No valid respawn point"));
 }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // 라운드 시작 / 종료 / 타이머
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -754,11 +766,6 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 	PlayerState->SetRaceScore(CalculateRaceScoreByRank(NewRank));
 	PlayerState->SetTotalScore(PlayerState->GetRaceScore() + PlayerState->GetGrowthScore());
 
-	if (APlantyRacePlayerController* PRPC = Cast<APlantyRacePlayerController>(PlayerCharacter->GetController()))
-	{
-		PRPC->ClientPlayFinishSFX(PlayerCharacter->GetActorLocation());
-	}
-
 	FinishOrder.Add(PlayerState);
 
 	DisableFinishedPlayer(PlayerCharacter);
@@ -787,6 +794,7 @@ void APRGMB::RegisterPlayerFinish(APlantyRaceCharacter* PlayerCharacter, APRPlay
 		}
 	}
 }
+
 void APRGMB::ResetRoundData()
 {
 	FinishOrder.Empty();
