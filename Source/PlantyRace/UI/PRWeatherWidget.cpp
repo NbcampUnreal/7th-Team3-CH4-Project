@@ -1,0 +1,65 @@
+﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
+
+
+#include "UI/PRWeatherWidget.h"
+#include "Components/TextBlock.h"
+#include "Core/PRGameStateBase.h"
+
+void UPRWeatherWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+
+    RefreshWeatherText();
+}
+
+void UPRWeatherWidget::RefreshWeatherText()
+{
+    // World 유효성 확인
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    // GameState 가져오고 내 타입으로 캐스팅
+    APRGameStateBase* PGS = Cast<APRGameStateBase>(World->GetGameState());
+    if (!PGS)
+    {
+        return;
+    }
+
+    // 기본 표시값
+    FText NewWeatherText = FText::FromString(TEXT("Unknown"));
+
+    // 현재 날씨값에 따라 표시 텍스트 결정
+    switch (PGS->GetCurrentWeather())
+    {
+    case EWeatherState::None:
+        NewWeatherText = FText::FromString(TEXT("Normal"));
+        break;
+    case EWeatherState::Rain:
+        NewWeatherText = FText::FromString(TEXT("Rain"));
+        break;
+    case EWeatherState::Sun:
+        NewWeatherText = FText::FromString(TEXT("Sun"));
+        break;
+    default:
+        NewWeatherText = FText::FromString(TEXT("Unknown"));
+        break;
+    }
+
+    if (WeatherText)
+    {
+        WeatherText->SetText(NewWeatherText);
+    }
+}
+
+void UPRWeatherWidget::SetWeatherText(const FText& InText)
+{
+    if (!WeatherText)
+    {
+        return;
+    }
+
+    WeatherText->SetText(InText);
+}

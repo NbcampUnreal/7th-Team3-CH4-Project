@@ -1,0 +1,35 @@
+﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
+
+
+#include "Actors/Characters/PRCharacterMovementComponent.h"
+#include "PlantyRaceCharacter.h"
+
+
+
+void UPRCharacterMovementComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+
+	CachedCharacter = Cast<APlantyRaceCharacter>(GetOwner());
+}
+
+void UPRCharacterMovementComponent::OnMovementUpdated(
+	float DeltaSeconds,
+	const FVector& OldLocation,
+	const FVector& OldVelocity)
+{
+	Super::OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
+
+	if (!CachedCharacter)
+	{
+		return;
+	}
+
+	CachedCharacter->UpdateSlopeSpeed();
+
+
+	if (CachedCharacter->HasAuthority() || CachedCharacter->IsLocallyControlled())
+	{
+		CachedCharacter->UpdateSlopeSliding(DeltaSeconds);
+	}
+}

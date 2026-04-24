@@ -1,0 +1,47 @@
+﻿// Copyright © 2026 33Fellowship. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "UW_TitleLayout.generated.h"
+
+class UButton;
+class UEditableText;
+
+/**
+ * 
+ */
+UCLASS()
+class PLANTYRACE_API UUW_TitleLayout : public UUserWidget
+{
+	GENERATED_BODY()
+	
+public:
+	UUW_TitleLayout(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	UPROPERTY(meta = (BindWidget), BlueprintReadOnly, Category = "MyButtons")
+	TObjectPtr<UButton> OptionButton;
+
+	UPROPERTY(meta = (BindWidget), BlueprintReadOnly, Category = "MyButtons")
+	TObjectPtr<UButton> InformationButton;
+protected:
+	virtual void NativeConstruct() override;
+
+	UFUNCTION()
+	void OnEnterButtonClicked();
+
+	UFUNCTION()
+	void OnExitButtonClicked();
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = USTitleWidget, Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> EnterButton;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = USTitleWidget, Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> ExitButton;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = USLobbyLevelUI, Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UEditableText> ServerIPEditableText;
+};
